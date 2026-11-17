@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Chevalet — Calendrier de bureau à spirale</title>
+<style>
+/* ============================================================
+   STUDIO CHEVALET — Interface (thème sombre studio graphique)
+   ============================================================ */
+:root{
+  --bg:#0d1017; --panel:#151b28; --panel2:#1a2233; --line:#242f45;
+  --txt:#e7ecf5; --muted:#8b98b0; --accent:#5eead4; --accent2:#f59e0b;
+  --danger:#ef4444;
+  --pxw:793.7px; --pxh:396.9px;
+  --sS:0.9; --sA:0.4;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:"Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", sans-serif;
+  background:var(--bg); color:var(--txt); overflow:hidden; font-size:13px;
+}
+button{font-family:inherit;}
+
+/* ---------- Barre supérieure ---------- */
+.topbar{
+  height:52px; display:flex; align-items:center; gap:14px; padding:0 16px;
+  background:linear-gradient(180deg,#131926,#10141f); border-bottom:1px solid var(--line);
+}
+.brand{font-weight:700; font-size:15px; letter-spacing:.4px; display:flex; align-items:center; gap:8px;}
+.brand .logo-dot{width:22px;height:22px;border-radius:6px;background:conic-gradient(from 210deg,var(--accent),#3b82f6,var(--accent2),var(--accent));}
+.yearbox{display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); padding:5px 10px; border-radius:8px;}
+.yearbox label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.8px;}
+#yearInput{width:78px; background:transparent; border:none; outline:none; color:var(--accent); font-size:17px; font-weight:700; text-align:center; font-family:inherit;}
+.grow{flex:1;}
+.btn{
+  background:var(--panel2); color:var(--txt); border:1px solid var(--line);
+  padding:8px 14px; border-radius:8px; cursor:pointer; font-size:12.5px; transition:.15s;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.btn:hover{border-color:#3b4a6b; background:#20293e;}
+.btn.primary{background:linear-gradient(135deg,#0d9488,#0f766e); border-color:#0f766e; font-weight:600;}
+.btn.primary:hover{filter:brightness(1.15);}
+.btn.warn{border-color:#7c4a12; color:#fbbf24;}
+.btn.small{padding:5px 9px; font-size:11.5px; border-radius:6px;}
+
+/* ---------- Coque ---------- */
+.shell{display:flex; height:calc(100vh - 52px);}
+.sidebar{
+  width:308px; min-width:308px; background:var(--panel); border-right:1px solid var(--line);
+  overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:16px;
+}
+.sidebar::-webkit-scrollbar,.main::-webkit-scrollbar{width:10px;}
+.sidebar::-webkit-scrollbar-thumb,.main::-webkit-scrollbar-thumb{background:#2a3550;border-radius:6px;}
+.sec{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px;}
+.sec h3{
+  font-size:10.5px; letter-spacing:1.4px; text-transform:uppercase; color:var(--muted);
+  margin-bottom:10px; display:flex; align-items:center; gap:6px;
+}
+.sec h3::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--accent);}
+#curLabel{color:var(--accent); font-weight:700; font-size:13px;}
+
+/* Navigation pages */
+#navList{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+#navList button{
+  background:#121826; border:1px solid var(--line); color:var(--muted); border-radius:7px;
+  padding:6px 8px; cursor:pointer; font-size:11.5px; text-align:left; position:relative; transition:.12s;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+#navList button:hover{color:var(--txt); border-color:#3b4a6b;}
+#navList button.on{background:#0f2e2b; border-color:var(--accent); color:var(--accent); font-weight:600;}
+#navList button .bgdot{position:absolute; right:6px; top:50%; transform:translateY(-50%); width:7px; height:7px; border-radius:50%; background:var(--accent2);}
+
+/* Contrôles */
+.row{display:flex; align-items:center; gap:8px; margin-bottom:9px;}
+.row:last-child{margin-bottom:0;}
+.row label.slbl{width:96px; min-width:96px; font-size:11.5px; color:var(--muted);}
+.row output{width:44px; text-align:right; font-size:11px; color:var(--accent); font-variant-numeric:tabular-nums;}
+input[type=range]{flex:1; accent-color:var(--accent); height:18px; cursor:pointer;}
+input[type=text], input[type=number]{
+  width:100%; background:#0f1420; border:1px solid var(--line); border-radius:7px;
+  color:var(--txt); padding:7px 9px; font-size:12.5px; outline:none; font-family:inherit;
+}
+input[type=text]:focus, input[type=number]:focus{border-color:var(--accent);}
+.radio2{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+.radio2 button{
+  background:#121826; border:1px solid var(--line); color:var(--muted); padding:7px 4px;
+  border-radius:7px; cursor:pointer; font-size:11.5px;
+}
+.radio2 button.on{border-color:var(--accent); color:var(--accent); background:#0f2e2b; font-weight:600;}
+.dropzone{
+  border:1.5px dashed #33415f; border-radius:9px; padding:10px; text-align:center;
+  color:var(--muted); font-size:11.5px; cursor:pointer; transition:.15s; margin-bottom:9px;
+}
+.dropzone:hover{border-color:var(--accent); color:var(--accent);}
+.main.dragging .dropzone, .dropzone.drag{border-color:var(--accent); background:rgba(94,234,212,.07); color:var(--accent);}
+.statusline{font-size:11.5px; color:var(--muted); line-height:1.5;}
+.statusline b{color:var(--accent);}
+.hint{font-size:10.5px; color:#5d6a84; line-height:1.5; margin-top:8px;}
+
+/* ---------- Zone principale ---------- */
+.main{flex:1; overflow:auto; position:relative; background:
+  radial-gradient(1200px 500px at 70% -10%, #16203a55, transparent), var(--bg);}
+.pages{
+  display:flex; flex-wrap:wrap; gap:26px; align-content:flex-start;
+  padding:28px; min-height:100%;
+}
+
+/* Emplacement + page 210×105mm */
+.slot{
+  width:calc(var(--pxw) * var(--sz)); height:calc(var(--pxh) * var(--sz));
+  position:relative; flex:none;
+}
+body.view-single .slot{--sz:var(--sS);}
+body.view-all .slot{--sz:var(--sA);}
+body.view-single .slot:not(.cur){display:none;}
+.page{
+  width:210mm; height:105mm; position:absolute; top:0; left:0; overflow:hidden;
+  transform:scale(var(--sz)); transform-origin:top left;
+  background:#fff; border-radius:1.5mm; color:#111;
+  box-shadow:0 10px 34px rgba(0,0,0,.5), 0 0 0 1px #000a;
+  print-color-adjust:exact; -webkit-print-color-adjust:exact;
+}
+body.view-all .slot{cursor:pointer;}
+body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px rgba(0,0,0,.5);}
+
+/* Zone reliure Wire-O 18mm (masquée à l'impression) */
+.binding{
+  position:absolute; top:0; left:0; right:0; height:18mm; z-index:6;
+  background:repeating-linear-gradient(90deg,#00000008 0 2mm,#0000 2mm 8mm);
+  border-bottom:1px dashed #0004;
+}
+.binding::before{
+  content:""; position:absolute; left:2mm; right:2mm; top:3mm; height:7mm;
+  background:radial-gradient(circle at 50% 50%, #0002 1.5mm, transparent 1.7mm);
+  background-size:7.5mm 7mm; background-repeat:repeat-x;
+}
+.binding span{
+  position:absolute; right:3mm; bottom:0.8mm; font-size:2.2mm; color:#0007;
+  letter-spacing:.4px; font-weight:600;
+}
+
+/* Outils par page (écran uniquement) */
+.ptools{position:absolute; top:19.5mm; right:2.5mm; z-index:8; display:flex; gap:2mm;}
+.ptools button{
+  width:7mm; height:7mm; border-radius:50%; border:1px solid #0003; background:#fffffff2;
+  font-size:3.6mm; cursor:pointer; line-height:1; color:#333; box-shadow:0 1px 4px #0003;
+}
+.ptools button:hover{background:var(--accent); border-color:var(--accent); color:#04241f;}
+
+/* Fond photo + dégradé de secours */
+.bg{position:absolute; inset:0; z-index:0;}
+.page.split .bg{right:50%;}
+.bgimg{
+  position:absolute; width:100%; height:100%; object-fit:cover;
+  left:50%; top:50%; transform:translate(-50%,-50%); transform-origin:center;
+  opacity:0; transition:opacity .5s;
+}
+.bgimg.loaded{opacity:1;}
+.bgimg.failed{display:none;}
+.shade{position:absolute; inset:0; background:#000;}
+
+/* Bloc calendrier */
+.calcard{position:absolute; z-index:4; display:flex; flex-direction:column;}
+.page.fullscreen .calcard{
+  inset:21mm 7mm 5mm 7mm; padding:3mm 4.5mm;
+  background:rgba(255,255,255,.87); border-radius:2.5mm; box-shadow:0 1px 8px #0003;
+}
+.page.split .calcard{top:0; bottom:0; right:0; left:50%; padding:5mm 4.5mm 3mm 5mm; background:#fff;}
+
+/* En-tête du mois */
+.calhead{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:1.6mm;}
+.mname{font-size:5.4mm; font-weight:800; letter-spacing:.2mm;}
+.ytag{font-size:3.2mm; color:#667; font-weight:600;}
+.dowrow{display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:0.8mm;}
+.dowrow span{font-size:2.5mm; font-weight:700; color:#556; text-align:center; letter-spacing:.3px;}
+.dowrow span.we{color:#b45309;}
+
+/* Grille des jours */
+.daygrid{flex:1; display:grid; grid-template-columns:repeat(7,1fr); grid-template-rows:repeat(6,1fr); gap:0.4mm;}
+.cell{border-radius:1mm; position:relative; display:flex; align-items:center; justify-content:center;}
+.cell.we{background:#eef2f7;}
+.cell .n{font-size:2.9mm; font-weight:500; color:#222; line-height:1;}
+.cell.we .n{font-weight:700; color:#1d3b6d;}
+.cell.clickable{cursor:pointer;}
+.cell.clickable:hover{outline:1px solid #0006; background:#e2e8f0;}
+.cell.h-fixed .n, .cell.h-islamic .n, .cell.h-custom .n{font-weight:800;}
+.cell.h-fixed{background:#fdeaea;} .cell.h-fixed .n{color:#b91c1c;}
+.cell.h-islamic{background:#e3f4f4;} .cell.h-islamic .n{color:#0e7490;}
+.cell.h-custom{background:#fdf3dc;} .cell.h-custom .n{color:#b45309;}
+.cell .tdot{position:absolute; bottom:0.6mm; left:50%; transform:translateX(-50%); width:1.5mm; height:1.5mm; border-radius:50%;}
+.cell.h-fixed .tdot{background:#dc2626;} .cell.h-islamic .tdot{background:#0891b2;} .cell.h-custom .tdot{background:#d97706;}
+
+/* Légende du mois */
+.legend{min-height:4.6mm; margin-top:1.2mm; display:flex; flex-wrap:wrap; gap:0.5mm 3mm; align-items:center; border-top:0.3px solid #0002; padding-top:1mm;}
+.legend .li{font-size:2.3mm; color:#333; display:flex; align-items:center; gap:0.8mm; font-weight:500;}
+.legend .li .dot{width:1.6mm; height:1.6mm; border-radius:50%; flex:none;}
+.legend .li.t-fixed .dot{background:#dc2626;} .legend .li.t-islamic .dot{background:#0891b2;} .legend .li.t-custom .dot{background:#d97706;}
+.legend .none{font-size:2.2mm; color:#999;}
+
+/* Pied de page société */
+.pfoot{display:flex; align-items:center; gap:2.4mm; margin-top:1.2mm; padding-top:1mm; border-top:0.3px solid #0002; min-height:5.4mm;}
+.pfoot img{max-height:5mm; max-width:22mm; object-fit:contain;}
+.pfoot .fl{font-size:2.7mm; font-weight:700; color:#1f2937; white-space:nowrap;}
+.pfoot .fs{font-size:2.5mm; color:#556; white-space:nowrap;}
+.pfoot .sep{width:1px; height:3mm; background:#0003;}
+
+/* Couverture */
+.cover{position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:#fff; padding:20mm 10mm 10mm;}
+.cover .c-kicker{font-size:4mm; letter-spacing:1.6mm; text-transform:uppercase; opacity:.85; font-weight:600;}
+.cover .c-year{font-size:26mm; font-weight:800; line-height:1.05; letter-spacing:1mm; text-shadow:0 2mm 8mm #0006;}
+.cover .c-sub{font-size:3.6mm; opacity:.85; margin-top:1.5mm;}
+.cover .c-rule{width:30mm; height:0.6mm; background:var(--accent); border-radius:1mm; margin:3mm 0 2mm;}
+.cover .c-brand{position:absolute; bottom:4mm; left:0; right:0; font-size:2.9mm; opacity:.9;}
+.page.split .cover{position:absolute; inset:0 auto 0 0; width:50%; color:#fff;}
+.cover-shade{position:absolute; inset:0; z-index:2; background:linear-gradient(180deg,#0006,#000000ab 75%);}
+.page.split .cover-shade{inset:0 auto 0 0; width:50%;}
+
+/* Modal édition d'un jour */
+.modal{position:fixed; inset:0; background:#000a; backdrop-filter:blur(3px); z-index:60; display:none; align-items:center; justify-content:center;}
+.modal.open{display:flex;}
+.mbox{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:20px; width:330px; box-shadow:0 20px 60px #000c;}
+.mbox h4{font-size:15px; margin-bottom:4px;}
+.mbox .msub{font-size:11.5px; color:var(--muted); margin-bottom:14px;}
+.mbox .row2{display:flex; align-items:center; gap:9px; margin-bottom:12px; font-size:12.5px;}
+.mbox input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent);}
+.mbox .actions{display:flex; gap:8px; margin-top:14px;}
+.mbox .actions .btn{flex:1; justify-content:center;}
+
+/* Toast */
+#toast{
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px);
+  background:#0f2e2b; border:1px solid var(--accent); color:var(--accent);
+  padding:10px 18px; border-radius:10px; font-size:12.5px; z-index:70; transition:.3s; opacity:0; pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0); opacity:1;}
+#toast.err{background:#3b1212; border-color:var(--danger); color:fca5a5; color:#fca5a5;}
+
+/* ============================================================
+   IMPRESSION — @page 210mm × 105mm, marges 0, interface cachée
+   ============================================================ */
+@media print{
+  @page{size:210mm 105mm; margin:0;}
+  html,body{width:210mm; height:auto; overflow:visible; background:#fff;}
+  .topbar,.sidebar,.ptools,.binding,.modal,#toast{display:none !important;}
+  .shell{display:block; height:auto;}
+  .main{overflow:visible; background:#fff;}
+  .pages{display:block; padding:0; gap:0;}
+  body.view-single .slot{display:block !important;}
+  .slot{width:210mm !important; height:105mm !important; --sz:1 !important; margin:0;}
+  .page{position:relative; transform:none !important; border-radius:0; box-shadow:none; break-after:page; page-break-after:always;}
+  .page:last-child{break-after:auto; page-break-after:auto;}
+}
+</style>
+</head>
+<body class="view-single">
+
+<header class="topbar">
+  <div class="brand"><span class="logo-dot"></span>Studio Chevalet</div>
+  <div class="yearbox">
+    <label for="yearInput">Année</label>
+    <input id="yearInput" type="number" min="1900" max="2200" value="2027">
+  </div>
+  <div class="grow"></div>
+  <button class="btn" id="viewBtn">Voir les 13 pages</button>
+  <button class="btn primary" id="exportBtn">⬇ Exporter en PDF (Prêt à imprimer)</button>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+
+    <div class="sec">
+      <h3>Navigation</h3>
+      <div id="navList"></div>
+      <div class="hint">Astuce : en vue « 13 pages », cliquez une page pour la sélectionner, double-cliquez pour l'ouvrir.</div>
+    </div>
+
+    <div class="sec">
+      <h3>Page courante — <span id="curLabel">Couverture</span></h3>
+      <div class="row" style="margin-bottom:10px;">
+        <div class="radio2" style="width:100%;">
+          <button id="layFull">Plein écran</button>
+          <button id="laySplit">Split 50/50</button>
+        </div>
+      </div>
+      <div class="dropzone" id="dropzone">
+        📷 Glissez une image ici<br>ou cliquez pour parcourir
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </div>
+      <div class="row" style="margin-bottom:6px;">
+        <button class="btn small" id="nextBgBtn" style="flex:1; justify-content:center;">⇄ Changer de photo suggérée</button>
+      </div>
+      <div class="row">
+        <button class="btn small warn" id="resetBgBtn" style="width:100%; justify-content:center;">⟲ Rétablir la photo par défaut</button>
+      </div>
+      <div class="row" style="margin-top:10px; margin-bottom:6px;"><label class="slbl" style="width:auto;">Fournisseur d'images par défaut</label></div>
+      <div class="radio2" id="provSwitch" style="grid-template-columns:1fr 1fr 1fr;">
+        <button data-p="wikimedia" title="Wikimedia Commons — recherche thématique, sans clé API">Wikimedia</button>
+        <button data-p="picsum" title="Picsum Photos — photo aléatoire stable par page">Picsum</button>
+        <button data-p="none" title="Aucune image — dégradé CSS élégant (100 % hors-ligne)">Dégradé</button>
+      </div>
+      <div class="row"><label class="slbl">Zoom</label><input type="range" id="sl-zoom" min="50" max="320" value="100"><output id="o-zoom">100%</output></div>
+      <div class="row"><label class="slbl">Position X</label><input type="range" id="sl-x" min="0" max="100" value="50"><output id="o-x">50</output></div>
+      <div class="row"><label class="slbl">Position Y</label><input type="range" id="sl-y" min="0" max="100" value="50"><output id="o-y">50</output></div>
+      <div class="row"><label class="slbl">Opacité image</label><input type="range" id="sl-op" min="20" max="100" value="100"><output id="o-op">100%</output></div>
+      <div class="row"><label class="slbl">Voile sombre</label><input type="range" id="sl-dark" min="0" max="80" value="30"><output id="o-dark">30%</output></div>
+    </div>
+
+    <div class="sec">
+      <h3>Pied de page (12 mois)</h3>
+      <div class="dropzone" id="logoZone" style="padding:7px; margin-bottom:8px;">
+        🏷 Logo — cliquez ou glissez
+        <input type="file" id="logoInput" accept="image/*" hidden>
+      </div>
+      <div class="row" style="margin-bottom:8px;"><input type="text" id="fCompany" placeholder="Nom de l'entreprise"></div>
+      <div class="row" style="margin-bottom:8px;"><input type="text" id="fPhone" placeholder="Téléphone"></div>
+      <div class="row"><input type="text" id="fSite" placeholder="Site web"></div>
+    </div>
+
+    <div class="sec">
+      <h3>Fêtes &amp; jours fériés</h3>
+      <div class="statusline" id="hijriStatus">Chargement des fêtes islamiques…</div>
+      <button class="btn small" id="reFetchBtn" style="margin-top:9px;">↻ Recalculer les fêtes</button>
+      <div class="hint">
+        <b style="color:var(--muted)">Cliquez sur un jour du calendrier</b> pour activer / désactiver son statut « jour férié » ou éditer son libellé (utile si l'observation lunaire décale une fête).
+        <br><br>Fixes (Tunisie) · <span style="color:#f87171">●</span> Fêtes islamiques (AlAdhan) · <span style="color:#fbbf24">●</span> Personnalisées
+      </div>
+    </div>
+
+  </aside>
+
+  <main class="main" id="mainArea">
+    <div class="pages" id="pages"></div>
+  </main>
+</div>
+
+<!-- Modal d'édition d'un jour -->
+<div class="modal" id="dayModal">
+  <div class="mbox">
+    <h4 id="mDate">Jour</h4>
+    <div class="msub">Statut de ce jour dans le calendrier</div>
+    <div class="row2"><input type="checkbox" id="mHol"><label for="mHol">Jour férié (chômé)</label></div>
+    <div class="row2" style="margin-bottom:2px;"><input type="text" id="mLabel" placeholder="Libellé du jour férié (ex : Aïd observé)"></div>
+    <div class="hint" id="mInfo"></div>
+    <div class="actions">
+      <button class="btn" id="mCancel">Annuler</button>
+      <button class="btn primary" id="mSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   CONSTANTES
+   ============================================================ */
+const MONTHS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+const SLUGS  = ["janvier","fevrier","mars","avril","mai","juin","juillet","aout","septembre","octobre","novembre","decembre"];
+const DOW    = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const FIXED_HOLIDAYS = {
+  "01-01":"Nouvel An",
+  "03-20":"Fête de l'Indépendance",
+  "04-09":"Journée des Martyrs",
+  "05-01":"Fête du Travail",
+  "07-25":"Fête de la République",
+  "08-13":"Fête de la Femme",
+  "10-15":"Fête de l'Évacuation",
+  "12-17":"Fête de la Révolution"
+};
+const ISLAMIC_TARGETS = {          // clé "jourHijri-moisHijri"
+  "1-1":"Ras el-Am el-Hijri",
+  "1-9":"Début du Ramadan",
+  "12-3":"Mouled An-Nabawi",
+  "1-10":"Aïd el-Fitr",
+  "10-12":"Aïd el-Adha"
+};
+const WIKI_KEYWORDS = [ // mot-clé Wikimedia Commons par page (couverture + 12 mois)
+  "Tunisia landscape",
+  "winter mountains snow",
+  "Ramadan lantern mosque",
+  "Ramadan lantern mosque",
+  "spring blossoms",
+  "Tunisia countryside field",
+  "Sidi Bou Said Tunisia",
+  "Mediterranean sea Tunisia",
+  "Tunisia beach Mediterranean",
+  "Sahara desert dunes",
+  "autumn forest",
+  "olive trees Tunisia",
+  "winter sunset landscape"
+];
+const GRADS = [ // dégradés de secours (hors-ligne) — couverture + 12 mois
+  ["#0e2a47","#155e8f","#7ab5dd"],
+  ["#1a2a4f","#2c5f9e","#9ec9ec"],["#3b2f63","#7b5ea7","#cbb3e6"],
+  ["#1d4d3b","#3e8e63","#bfe3c0"],["#5a3d5c","#b56fae","#f3c6e2"],
+  ["#2e7d4f","#66bb6a","#d7f5d0"],["#1f6f8b","#3ca7c9","#c2ecf5"],
+  ["#b3541e","#e8862e","#ffd8a0"],["#c2195c","#f4643c","#ffd1a1"],
+  ["#7a4f1d","#c98a3b","#f0d9a8"],["#8e4a1f","#d17935","#f5c48f"],
+  ["#3f4b54","#6c7f8c","#c3ccd2"],["#0d2b52","#274b8f","#a8c6ee"]
+];
+const PXW = 210 * 96 / 25.4, PXH = 105 * 96 / 25.4; // taille d'une page en px écran
+const LS_KEY = "chevaletStudio_v1";
+
+/* ============================================================
+   ÉTAT (sauvegarde auto localStorage)
+   ============================================================ */
+function defaultState(){
+  return {
+    year: 2027,
+    current: 0,          // 0 = couverture, 1..12 = mois
+    viewMode: "single",
+    provider: "wikimedia", // fournisseur d'images par défaut : wikimedia | picsum | none
+    footer: { logo:null, company:"", phone:"", site:"" },
+    overrides: {},       // overrides[année]["2027-03-09"] = {holiday:true,label} | {holiday:false}
+    pages: Array.from({length:13}, () => ({
+      layout:"fullscreen", bg:null, zoom:100, x:50, y:50, opacity:100, dark:30
+    }))
+  };
+}
+let state = loadState();
+let hijri = {};          // fêtes islamiques de l'année courante : "2027-03-09" -> libellé
+let hijriStatus = "";
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return defaultState();
+    const d = JSON.parse(raw);
+    const s = defaultState();
+    Object.assign(s, d);
+    s.pages = (d.pages && d.pages.length === 13 ? d.pages : s.pages)
+      .map(p => Object.assign(defaultState().pages[0], p));
+    s.footer = Object.assign(defaultState().footer, d.footer || {});
+    s.overrides = d.overrides || {};
+    return s;
+  }catch(e){ return defaultState(); }
+}
+function save(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch(e){ toast("⚠ Stockage saturé : réduisez le poids des images importées.", true); }
+}
+const saveSoon = debounce(save, 250);
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+/* ============================================================
+   UTILITAIRES CALENDRIER
+   ============================================================ */
+const pad2 = n => String(n).padStart(2, "0");
+const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+const firstDow = (y, m) => (new Date(y, m, 1).getDay() + 6) % 7; // lundi = 0
+const dayKey = (y, m, d) => y + "-" + pad2(m + 1) + "-" + pad2(d);
+const mdKey = (m, d) => pad2(m + 1) + "-" + pad2(d);
+
+function holidayFor(y, m, d){
+  const key = dayKey(y, m, d);
+  const ov = (state.overrides[state.year] || {})[key];
+  const fixed = FIXED_HOLIDAYS[mdKey(m, d)];
+  const isl = hijri[key];
+  if(ov){
+    if(ov.holiday) return { label: ov.label || fixed || isl || "Férié", type:"custom", hadAuto:!!(fixed||isl) };
+    return null;
+  }
+  if(fixed) return { label:fixed, type:"fixed" };
+  if(isl)   return { label:isl, type:"islamic" };
+  return null;
+}
+function monthHolidays(y, m){
+  const out = [];
+  const n = daysIn(y, m);
+  for(let d = 1; d <= n; d++){
+    const h = holidayFor(y, m, d);
+    if(h) out.push({ d, ...h });
+  }
+  return out;
+}
+
+/* ============================================================
+   FÊTES ISLAMIQUES — API AlAdhan (gratuite, sans clé) + cache
+   ============================================================ */
+function hijriViaIntl(year){
+  // Solution de secours 100% hors-ligne : calendrier hégirien civil (Intl)
+  const out = {};
+  try{
+    const fmt = new Intl.DateTimeFormat("en-u-ca-islamic-c", { day:"numeric", month:"numeric", timeZone:"UTC" });
+    const m0 = new Date(Date.UTC(year, 0, 1));
+    for(let i = 0; i < (isLeap(year) ? 366 : 365); i++){
+      const dt = new Date(m0.getTime() + i * 86400000);
+      const parts = {};
+      fmt.formatToParts(dt).forEach(p => { parts[p.type] = p.value; });
+      const hd = parseInt(parts.day, 10), hm = parseInt(parts.month, 10);
+      const t = ISLAMIC_TARGETS[hd + "-" + hm];
+      if(t) out[dt.getUTCFullYear() + "-" + pad2(dt.getUTCMonth() + 1) + "-" + pad2(dt.getUTCDate())] = t;
+    }
+  }catch(e){ /* Intl indisponible */ }
+  return out;
+}
+function isLeap(y){ return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+
+async function loadIslamicHolidays(year, force){
+  const cacheKey = "chevaletHijri_v2_" + year; // v2 : ajoute le Début du Ramadan (invalide les anciens caches)
+  if(!force){
+    const cached = localStorage.getItem(cacheKey);
+    if(cached){
+      try{
+        hijri = JSON.parse(cached);
+        hijriStatus = "Fêtes islamiques chargées depuis le <b>cache local</b> ✓";
+        renderPages(); renderSidebar();
+        return;
+      }catch(e){ /* cache corrompu -> refetch */ }
+    }
+  }
+  hijri = {}; hijriStatus = "Interrogation de l'API AlAdhan…"; renderSidebar();
+  const jobs = [];
+  for(let m = 1; m <= 12; m++){
+    jobs.push(fetch("https://api.aladhan.com/v1/gToHCalendar/" + m + "/" + year)
+      .then(r => r.json()).catch(() => null));
+  }
+  const results = await Promise.allSettled(jobs);
+  let okMonths = 0;
+  results.forEach(r => {
+    const data = r.status === "fulfilled" && r.value && r.value.code === 200 ? r.value.data : null;
+    if(!data || !data.length) return;
+    okMonths++;
+    data.forEach(entry => {
+      const hj = entry.hijri, g = entry.gregorian;
+      if(!hj || !g) return;
+      const [dd, mm, yy] = g.date.split("-");
+      const t = ISLAMIC_TARGETS[hj.day + "-" + hj.month.number];
+      if(t) out(year, mm, dd, t);
+    });
+  });
+  function out(y, mm, dd, label){ hijri[y + "-" + mm + "-" + dd] = label; }
+
+  if(okMonths === 12){
+    hijriStatus = "Fêtes islamiques récupérées via l'<b>API AlAdhan</b> ✓ (12/12 mois)";
+    try{ localStorage.setItem(cacheKey, JSON.stringify(hijri)); }catch(e){}
+  }else{
+    hijri = hijriViaIntl(year); // secours hors-ligne
+    const n = Object.keys(hijri).length;
+    hijriStatus = n ? "API inaccessible — <b>calendrier hégirien estimé</b> (hors-ligne)" :
+      "API inaccessible et calendrier estimé indisponible.";
+  }
+  renderPages(); renderSidebar();
+}
+
+/* ============================================================
+   RENDU DES 13 PAGES
+   ============================================================ */
+const pagesEl = document.getElementById("pages");
+
+function bgStyle(p){
+  return "left:" + p.x + "%;top:" + p.y + "%;transform:translate(-50%,-50%) scale(" + (p.zoom / 100) + ");opacity:" + (p.opacity / 100) + ";";
+}
+function gradStyle(i){
+  const g = GRADS[i];
+  return "linear-gradient(160deg," + g[0] + "," + g[1] + " 55%," + g[2] + ")";
+}
+function pfootHTML(){
+  const f = state.footer;
+  const parts = [];
+  if(f.company) parts.push('<span class="fl">' + esc(f.company) + "</span>");
+  if(f.phone)   parts.push('<span class="fs">' + esc(f.phone) + "</span>");
+  if(f.site)    parts.push('<span class="fs">' + esc(f.site) + "</span>");
+  if(!parts.length && !f.logo) return "";
+  let html = "";
+  if(f.logo) html += '<img src="' + f.logo + '" alt="logo">';
+  parts.forEach((p, i) => { if(i) html += '<span class="sep"></span>'; html += p; });
+  return '<div class="pfoot">' + html + "</div>";
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+function monthInner(y, m){
+  const n = daysIn(y, m), start = firstDow(y, m);
+  const hols = monthHolidays(y, m);
+  let cells = "";
+  for(let i = 0; i < start; i++) cells += '<div class="cell"></div>';
+  for(let d = 1; d <= n; d++){
+    const dow = (start + d - 1) % 7;
+    const we = dow >= 5 ? " we" : "";
+    const h = holidayFor(y, m, d);
+    const hc = h ? " h-" + h.type : "";
+    cells += '<div class="cell clickable' + we + hc + '" data-k="' + dayKey(y, m, d) + '" title="' + (h ? esc(h.label) : "Cliquez pour éditer") + '">' +
+             '<span class="n">' + d + "</span>" + (h ? '<span class="tdot"></span>' : "") + "</div>";
+  }
+  let legend = "";
+  if(hols.length){
+    legend = hols.map(h => '<span class="li t-' + h.type + '"><i class="dot"></i>' + h.d + " " + esc(h.label) + "</span>").join("");
+  }else{
+    legend = '<span class="none">Aucun jour férié ce mois — cliquez un jour pour en ajouter</span>';
+  }
+  const foot = pfootHTML();
+  return '<div class="calhead"><div class="mname">' + MONTHS[m] + '</div><div class="ytag">' + y + "</div></div>" +
+    '<div class="dowrow">' + DOW.map((w, i) => '<span class="' + (i >= 5 ? "we" : "") + '">' + w + "</span>").join("") + "</div>" +
+    '<div class="daygrid">' + cells + "</div>" +
+    '<div class="legend">' + legend + "</div>" + foot;
+}
+function coverInner(y){
+  const foot = pfootHTML();
+  return '<div class="cover-shade"></div>' +
+    '<div class="cover">' +
+      '<div class="c-kicker">Calendrier de bureau</div>' +
+      '<div class="c-year">' + y + "</div>" +
+      '<div class="c-rule"></div>' +
+      '<div class="c-sub">Janvier — Décembre ' + y + " · Édition chevalet à spirale</div>" +
+      (foot ? '<div class="c-brand" style="position:static;margin-top:6mm;">' + pfootHTML().replace('class="pfoot"', 'class="pfoot" style="border:none;justify-content:center;min-height:auto;color:#fff;"') + "</div>" : "") +
+    "</div>";
+}
+
+/* ============================================================
+   FOURNISSEURS D'IMAGES PAR DÉFAUT
+   — Wikimedia Commons (API gratuite, sans clé, origin=* pour CORS)
+   — Picsum Photos (seed stable par page)
+   — Dégradé CSS seul (100 % hors-ligne)
+   ============================================================ */
+const SEEDS = ["chevalet-couverture", ...SLUGS.map(s => "chevalet-month-" + s)];
+
+const wikiCache = loadWikiCache(); // { 0:{urls:[], idx:0}, ... } — cache localStorage des URLs trouvées
+function loadWikiCache(){
+  try{ return JSON.parse(localStorage.getItem("chevaletWiki_v1")) || {}; }catch(e){ return {}; }
+}
+function saveWikiCache(){
+  try{ localStorage.setItem("chevaletWiki_v1", JSON.stringify(wikiCache)); }catch(e){}
+}
+
+async function fetchWikiList(i){
+  const url = "https://commons.wikimedia.org/w/api.php?action=query&generator=search" +
+    "&gsrsearch=" + encodeURIComponent(WIKI_KEYWORDS[i]) +
+    "&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url%7Csize&iiurlwidth=1600&format=json&origin=*";
+  const r = await fetch(url);
+  const j = await r.json();
+  const list = j && j.query && j.query.pages ? Object.values(j.query.pages) : [];
+  const urls = [];
+  list.forEach(p => {
+    const ii = p.imageinfo && p.imageinfo[0];
+    if(!ii || !ii.thumburl) return;
+    if(!(ii.width > ii.height)) return;              // format paysage uniquement
+    if(ii.width < 600) return;                       // résolution trop faible
+    if(!/\.(jpe?g|png)(\?|$)/i.test(ii.thumburl)) return;
+    if(!urls.includes(ii.thumburl)) urls.push(ii.thumburl);
+  });
+  return urls;
+}
+async function ensureWiki(i){
+  const c = wikiCache[i];
+  if(c && c.urls && c.urls.length) return c;
+  let urls = [];
+  try{ urls = await fetchWikiList(i); }catch(e){ /* hors-ligne : dégradé */ }
+  wikiCache[i] = { urls, idx:0 };
+  saveWikiCache();
+  return wikiCache[i];
+}
+function currentWikiUrl(i){
+  const c = wikiCache[i];
+  if(!c || !c.urls || !c.urls.length) return null;
+  return c.urls[(c.idx || 0) % c.urls.length];
+}
+let wikiToken = 0; // annule les mises à jour obsolètes après un re-render
+function loadWikiPhotos(){
+  const token = ++wikiToken;
+  for(let i = 0; i < 13; i++){
+    if(state.pages[i].bg) continue; // image personnalisée : on ne touche pas
+    ensureWiki(i).then(() => {
+      if(token !== wikiToken) return;
+      const img = pagesEl.querySelector('.bgimg[data-i="' + i + '"]');
+      if(!img || state.pages[i].bg) return;
+      const url = currentWikiUrl(i);
+      if(url && img.getAttribute("src") !== url){
+        img.classList.remove("loaded", "failed");
+        img.setAttribute("src", url);
+        attachImg(img);
+      }
+    });
+  }
+}
+function attachImg(img){
+  const done = () => img.classList.add("loaded");
+  if(img.complete && img.naturalWidth) done();
+  else{
+    img.onload = done;
+    img.onerror = () => { img.classList.remove("loaded"); img.classList.add("failed"); };
+  }
+}
+function defaultBgUrl(p, i){
+  if(state.provider === "picsum") return "https://picsum.photos/seed/" + SEEDS[i] + "-" + (p.pseed || 0) + "/1400/700";
+  if(state.provider === "wikimedia") return currentWikiUrl(i);
+  return null; // dégradé seul
+}
+
+/* Passe à la photo suggérée suivante pour une page donnée */
+async function nextDefault(i){
+  const p = state.pages[i];
+  if(state.provider === "wikimedia"){
+    const entry = await ensureWiki(i);
+    if(!entry.urls.length){ toast("Aucune photo suggérée — vérifiez la connexion", true); return; }
+    if(p.bg){ p.bg = null; toast("Photo suggérée rétablie"); }
+    else{ entry.idx = ((entry.idx || 0) + 1) % entry.urls.length; saveWikiCache(); }
+  }else if(state.provider === "picsum"){
+    p.pseed = (p.pseed || 0) + 1;
+    if(p.bg) p.bg = null;
+  }else{
+    state.provider = "wikimedia";
+    toast("Fournisseur activé : Wikimedia Commons");
+  }
+  save(); renderAll();
+}
+
+function renderPages(){
+  const y = state.year;
+  let html = "";
+  for(let i = 0; i < 13; i++){
+    const p = state.pages[i];
+    const isCover = i === 0;
+    const src = p.bg || defaultBgUrl(p, i) || "";
+    const grad = gradStyle(i);
+    const inner = isCover ? coverInner(y) : monthInner(y, i - 1);
+    html +=
+      '<div class="slot' + (i === state.current ? " cur" : "") + '" data-i="' + i + '">' +
+        '<section class="page ' + p.layout + '" data-i="' + i + '">' +
+          '<div class="binding"><span>Zone reliure Wire-O — 18 mm</span></div>' +
+          '<div class="bg" style="background:' + grad + ';">' +
+            '<img class="bgimg" data-i="' + i + '"' + (src ? ' src="' + src + '"' : "") + ' alt="" style="' + bgStyle(p) + '">' +
+            '<div class="shade" style="opacity:' + (p.dark / 100) + '"></div>' +
+          "</div>" +
+          (isCover ? "" : '<div class="calcard">' + inner + "</div>") +
+          (isCover ? inner : "") +
+          '<div class="ptools">' +
+            '<button data-act="nextbg" data-i="' + i + '" title="Changer de photo suggérée">⇄</button>' +
+            '<button data-act="resetbg" data-i="' + i + '" title="Rétablir la photo par défaut">⟲</button>' +
+          "</div>" +
+        "</section>" +
+      "</div>";
+  }
+  pagesEl.innerHTML = html;
+  pagesEl.querySelectorAll(".bgimg").forEach(attachImg);
+  if(state.provider === "wikimedia") loadWikiPhotos();
+}
+
+/* Mise à jour live (sliders) sans re-render complet */
+function liveBg(i){
+  const el = pagesEl.querySelector('.page[data-i="' + i + '"]');
+  if(!el) return;
+  const p = state.pages[i];
+  const img = el.querySelector(".bgimg");
+  const shade = el.querySelector(".shade");
+  if(img) img.style.cssText = bgStyle(p);
+  if(shade) shade.style.opacity = p.dark / 100;
+}
+
+/* ============================================================
+   BARRE LATÉRALE
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const yearInput = $("yearInput"), curLabel = $("curLabel"), navList = $("navList");
+
+function renderSidebar(){
+  yearInput.value = state.year;
+  // Navigation
+  let nav = "";
+  for(let i = 0; i < 13; i++){
+    const name = i === 0 ? "Couverture" : MONTHS[i - 1];
+    nav += '<button data-i="' + i + '" class="' + (i === state.current ? "on" : "") + '">' + esc(name) +
+           (state.pages[i].bg ? '<span class="bgdot"></span>' : "") + "</button>";
+  }
+  navList.innerHTML = nav;
+  navList.querySelectorAll("button").forEach(b => b.onclick = () => {
+    state.current = +b.dataset.i; state.viewMode = "single"; saveSoon(); renderAll();
+  });
+  // Page courante
+  curLabel.textContent = state.current === 0 ? "Couverture" : MONTHS[state.current - 1] + " " + state.year;
+  $("layFull").classList.toggle("on", state.pages[state.current].layout === "fullscreen");
+  $("laySplit").classList.toggle("on", state.pages[state.current].layout === "split");
+  const p = state.pages[state.current];
+  [["zoom", p.zoom],["x", p.x],["y", p.y],["op", p.opacity],["dark", p.dark]].forEach(([k, v]) => {
+    $("sl-" + k).value = v;
+    $("o-" + k).textContent = (k === "zoom" || k === "op" || k === "dark") ? v + "%" : v;
+  });
+  $("resetBgBtn").style.display = p.bg ? "" : "none";
+  // Fournisseur d'images par défaut
+  document.querySelectorAll("#provSwitch button").forEach(b =>
+    b.classList.toggle("on", b.dataset.p === state.provider));
+  // Pied de page
+  $("fCompany").value = state.footer.company;
+  $("fPhone").value = state.footer.phone;
+  $("fSite").value = state.footer.site;
+  $("logoZone").style.borderColor = state.footer.logo ? "var(--accent)" : "";
+  // Fêtes
+  $("hijriStatus").innerHTML = hijriStatus;
+  // Bouton vue
+  $("viewBtn").textContent = state.viewMode === "single" ? "Voir les 13 pages" : "Vue page seule";
+}
+function renderAll(){
+  document.body.className = state.viewMode === "single" ? "view-single" : "view-all";
+  renderPages(); renderSidebar(); applyScale();
+}
+
+/* ============================================================
+   MISE À L'ÉCHELLE ÉCRAN
+   ============================================================ */
+function applyScale(){
+  const main = $("mainArea");
+  const aw = main.clientWidth - 90, ah = main.clientHeight - 80;
+  let sS = Math.min(aw / PXW, ah / PXH, 1.35);
+  let sA = Math.min((aw - 30) / (2 * PXW), ah / PXH, 0.55);
+  sS = Math.max(0.25, sS); sA = Math.max(0.2, sA);
+  document.documentElement.style.setProperty("--sS", sS.toFixed(4));
+  document.documentElement.style.setProperty("--sA", sA.toFixed(4));
+}
+window.addEventListener("resize", applyScale);
+
+/* ============================================================
+   ÉVÉNEMENTS
+   ============================================================ */
+// Année
+yearInput.addEventListener("change", () => {
+  let y = parseInt(yearInput.value, 10);
+  if(!y || y < 1900 || y > 2200){ y = state.year; yearInput.value = y; toast("Année invalide (1900–2200)", true); return; }
+  state.year = y; save(); renderAll(); loadIslamicHolidays(y, false);
+});
+
+// Vue
+$("viewBtn").onclick = () => {
+  state.viewMode = state.viewMode === "single" ? "all" : "single";
+  saveSoon(); renderAll();
+};
+
+// Sélection en vue globale + outils par page
+pagesEl.addEventListener("click", e => {
+  const tool = e.target.closest(".ptools button");
+  if(tool){
+    const i = +tool.dataset.i;
+    if(tool.dataset.act === "nextbg"){ nextDefault(i); }
+    else{ state.pages[i].bg = null; save(); renderAll(); toast("Photo par défaut rétablie"); }
+    return;
+  }
+  const day = e.target.closest(".cell.clickable");
+  if(day){ openDayEditor(day.dataset.k); return; }
+  const slot = e.target.closest(".slot");
+  if(slot && state.viewMode === "all"){
+    state.current = +slot.dataset.i; saveSoon(); renderAll();
+  }
+});
+pagesEl.addEventListener("dblclick", e => {
+  const slot = e.target.closest(".slot");
+  if(slot && state.viewMode === "all"){ state.current = +slot.dataset.i; state.viewMode = "single"; saveSoon(); renderAll(); }
+});
+
+// Mise en page
+$("layFull").onclick = () => setLayout("fullscreen");
+$("laySplit").onclick = () => setLayout("split");
+function setLayout(l){ state.pages[state.current].layout = l; save(); renderAll(); }
+
+// Import image (bouton + drag & drop)
+$("dropzone").onclick = e => { if(e.target.tagName === "INPUT") return; $("fileInput").click(); };
+$("fileInput").onchange = e => { if(e.target.files[0]) importBg(e.target.files[0]); e.target.value = ""; };
+$("resetBgBtn").onclick = () => { state.pages[state.current].bg = null; save(); renderAll(); toast("Photo par défaut rétablie"); };
+$("nextBgBtn").onclick = () => nextDefault(state.current);
+document.querySelectorAll("#provSwitch button").forEach(b => b.onclick = () => {
+  if(state.provider === b.dataset.p) return;
+  state.provider = b.dataset.p;
+  save(); renderAll();
+  toast("Fournisseur d'images : " + b.textContent.trim());
+});
+
+const mainArea = $("mainArea");
+mainArea.addEventListener("dragover", e => { e.preventDefault(); mainArea.classList.add("dragging"); });
+mainArea.addEventListener("dragleave", e => { if(e.target === mainArea) mainArea.classList.remove("dragging"); });
+mainArea.addEventListener("drop", e => {
+  e.preventDefault(); mainArea.classList.remove("dragging");
+  const f = [...(e.dataTransfer.files || [])].find(f => f.type.startsWith("image/"));
+  if(f) importBg(f);
+});
+
+function importBg(file){
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      // Redimensionne pour rester léger dans localStorage
+      const maxW = 1600, maxH = 900;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const r = Math.min(1, maxW / w, maxH / h);
+      const c = document.createElement("canvas");
+      c.width = Math.round(w * r); c.height = Math.round(h * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      state.pages[state.current].bg = c.toDataURL("image/jpeg", 0.85);
+      save(); renderAll(); toast("Image de fond appliquée à la page");
+    };
+    img.onerror = () => toast("Fichier image illisible", true);
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Sliders (mise à jour live)
+const sliderKeys = { "sl-zoom":"zoom", "sl-x":"x", "sl-y":"y", "sl-op":"opacity", "sl-dark":"dark" };
+Object.entries(sliderKeys).forEach(([id, key]) => {
+  $(id).addEventListener("input", () => {
+    const v = +$(id).value;
+    state.pages[state.current][key] = v;
+    const o = $("o-" + id.slice(3));
+    o.textContent = (key === "zoom" || key === "opacity" || key === "dark") ? v + "%" : v;
+    liveBg(state.current);
+    saveSoon();
+  });
+  $(id).addEventListener("change", save);
+});
+
+// Pied de page
+["fCompany", "fPhone", "fSite"].forEach((id, i) => {
+  $(id).addEventListener("input", debounce(() => {
+    state.footer[["company","phone","site"][i]] = $(id).value;
+    save(); renderPages();
+  }, 300));
+});
+$("logoZone").onclick = e => { if(e.target.tagName === "INPUT") return; $("logoInput").click(); };
+$("logoInput").onchange = e => { if(e.target.files[0]) importLogo(e.target.files[0]); e.target.value = ""; };
+$("logoZone").addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); $("logoZone").classList.add("drag"); });
+$("logoZone").addEventListener("dragleave", () => $("logoZone").classList.remove("drag"));
+$("logoZone").addEventListener("drop", e => {
+  e.preventDefault(); e.stopPropagation(); $("logoZone").classList.remove("drag");
+  const f = [...(e.dataTransfer.files || [])].find(f => f.type.startsWith("image/"));
+  if(f) importLogo(f);
+});
+function importLogo(file){
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, 400 / img.naturalWidth, 160 / img.naturalHeight);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * r); c.height = Math.round(img.naturalHeight * r);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      state.footer.logo = c.toDataURL("image/png");
+      save(); renderPages(); renderSidebar(); toast("Logo appliqué sur les 13 pages");
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// Fêtes : recalcul forcé
+$("reFetchBtn").onclick = () => loadIslamicHolidays(state.year, true);
+
+// Export PDF
+$("exportBtn").onclick = () => {
+  toast("Préparation de l'export… (13 pages 210 × 105 mm)");
+  setTimeout(() => window.print(), 350);
+};
+
+/* ============================================================
+   MODAL D'ÉDITION D'UN JOUR (clic sur le calendrier)
+   ============================================================ */
+const modal = $("dayModal");
+let editingKey = null;
+
+function openDayEditor(key){
+  editingKey = key;
+  const [y, m, d] = key.split("-").map(Number);
+  $("mDate").textContent = pad2(d) + " " + MONTHS[m - 1] + " " + y;
+  const fixed = FIXED_HOLIDAYS[pad2(m) + "-" + pad2(d)];
+  const isl = hijri[key];
+  const ov = (state.overrides[state.year] || {})[key];
+  const h = holidayFor(y, m - 1, d);
+  $("mHol").checked = !!h;
+  $("mLabel").value = ov && ov.holiday ? (ov.label || "") : (h ? h.label : "");
+  let info = [];
+  if(fixed) info.push("Férié tunisien fixe : <b>" + esc(fixed) + "</b>");
+  if(isl) info.push("Fête islamique (AlAdhan) : <b>" + esc(isl) + "</b>");
+  if(ov) info.push("Personnalisation enregistrée sur ce jour.");
+  if(!info.length) info.push("Jour ordinaire — cochez « Jour férié » pour le définir.");
+  $("mInfo").innerHTML = info.join("<br>");
+  modal.classList.add("open");
+  $("mLabel").focus();
+}
+$("mCancel").onclick = () => modal.classList.remove("open");
+modal.addEventListener("click", e => { if(e.target === modal) modal.classList.remove("open"); });
+document.addEventListener("keydown", e => { if(e.key === "Escape") modal.classList.remove("open"); });
+$("mSave").onclick = () => {
+  if(!editingKey) return;
+  const [y, m, d] = editingKey.split("-").map(Number);
+  const fixed = FIXED_HOLIDAYS[pad2(m) + "-" + pad2(d)];
+  const isl = hijri[editingKey];
+  const hadAuto = !!(fixed || isl);
+  state.overrides[state.year] = state.overrides[state.year] || {};
+  if($("mHol").checked){
+    state.overrides[state.year][editingKey] = { holiday:true, label:$("mLabel").value.trim() };
+  }else if(hadAuto){
+    state.overrides[state.year][editingKey] = { holiday:false };
+  }else{
+    delete state.overrides[state.year][editingKey];
+  }
+  save(); modal.classList.remove("open"); renderPages(); renderSidebar();
+  toast("Jour mis à jour");
+};
+
+/* ============================================================
+   TOAST + DÉMARRAGE
+   ============================================================ */
+let toastTimer;
+function toast(msg, err){
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+renderAll();
+loadIslamicHolidays(state.year, false);
+</script>
+</body>
+</html>
