@@ -61,6 +61,9 @@ function _latin1(s){
 }
 
 /* ---------- Chargement / conversion des images en JPEG ---------- */
+/* Les photos distantes (Wikimedia/Picsum) sont lisibles par canvas UNIQUEMENT
+   si le serveur envoie CORS (Access-Control-Allow-Origin). Sinon le canvas est
+   "tainted" et toDataURL() échoue. Chaîne de secours à 4 niveaux ci-dessous. */
 function _loadImage(url, cors){
   return new Promise((res, rej) => {
     const im = new Image();
@@ -77,29 +80,66 @@ function _dataURLBytes(durl){
   for(let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
   return b;
 }
+function _imgType(b){
+  if(!b || b.length < 12) return null;
+  if(b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return "jpeg";
+  if(b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return "png";
+  if(b[0] === 0x52 && b[1] === 0x49 && b[8] === 0x57 && b[9] === 0x45) return "webp";
+  if(b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return "gif";
+  return null;
+}
+function _jpegDims(b){
+  let i = 2;
+  while(i + 9 < b.length){
+    if(b[i] !== 0xFF){ i++; continue; }
+    const m = b[i + 1];
+    if(m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC){
+      return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8] };
+    }
+    if(m === 0xD8 || (m >= 0xD0 && m <= 0xD7) || m === 0x01){ i += 2; continue; }
+    i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+  }
+  return null;
+}
+/* Redessine une image (ImageBitmap/Image) en JPEG baseline propre pour le PDF */
+function _bitmapToJpeg(bmp, maxW){
+  const r = Math.min(1, (maxW || 1600) / bmp.width);
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bmp.width * r));
+  c.height = Math.max(1, Math.round(bmp.height * r));
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#ffffff";                 // les PNG transparents ne doivent pas devenir noirs
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  const durl = c.toDataURL("image/jpeg", 0.9);
+  return { bytes: _dataURLBytes(durl), w: c.width, h: c.height };
+}
+async function _blobToJpeg(blob, maxW){
+  const bmp = await createImageBitmap(blob);
+  const out = _bitmapToJpeg(bmp, maxW);
+  if(bmp.close) bmp.close();
+  return out;
+}
+/* Niveau 1 : fetch direct (CORS) → createImageBitmap → canvas (JPEG baseline)
+   Niveau 2 : Image crossOrigin → canvas
+   Niveau 3 : octets JPEG bruts passés tels quels (pas de canvas)
+   Niveau 4 : échec → null (dégradé dans le PDF) */
 async function _imgToJpeg(el){
   const src = el.getAttribute("src");
   if(!src) return null;
-  let im = null;
-  if(src.startsWith("data:")){
-    im = await _loadImage(src, false);
-  }else{
-    try{ im = await _loadImage(src, true); }
-    catch(e){ im = null; }
-    if(!im){
-      try{
-        const blob = await (await fetch(src)).blob();
-        im = await _loadImage(URL.createObjectURL(blob), false);
-      }catch(e2){ return null; }
-    }
-  }
-  const r = Math.min(1, 1600 / im.naturalWidth);
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(im.naturalWidth * r));
-  c.height = Math.max(1, Math.round(im.naturalHeight * r));
-  c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
-  const durl = c.toDataURL("image/jpeg", 0.9);
-  return { bytes: _dataURLBytes(durl), w: c.width, h: c.height };
+  try{
+    const blob = await (await fetch(src)).blob();          // marche aussi pour data:
+    return await _blobToJpeg(blob);
+  }catch(e1){}
+  try{                                                     // pas de CORS sur fetch mais image chargée avec CORS
+    const im = await _loadImage(src, true);
+    return _bitmapToJpeg(im);
+  }catch(e2){}
+  try{                                                     // derniers recours : octets directs si déjà JPEG
+    const b = src.startsWith("data:") ? _dataURLBytes(src) : new Uint8Array(await (await fetch(src, { mode: "cors" })).arrayBuffer());
+    if(_imgType(b) === "jpeg"){ const d = _jpegDims(b); if(d) return { bytes: b, w: d.w, h: d.h }; }
+  }catch(e3){}
+  return null;
 }
 function _download(blob, name){
   const a = document.createElement("a");
@@ -400,10 +440,15 @@ async function exportAI(){
       const le = pagesEl.querySelector('.page[data-i="1"] .pfoot img');
       if(le) logo = await _imgToJpeg(le);
     }
+    const nPhotos = imgs.filter(Boolean).length;
     const chunks = _buildPDF(imgs, logo);
     const blob = new Blob(chunks, { type: "application/postscript" });
     _download(blob, "calendrier-" + state.year + ".ai");
-    toast("✓ Fichier .ai exporté — 13 pages vectorielles, textes éditables dans Illustrator");
+    if(nPhotos === 13){
+      toast("✓ Fichier .ai exporté — 13/13 photos intégrées, textes éditables");
+    }else{
+      toast("⚠ .ai exporté — " + nPhotos + "/13 photos intégrées. Pour les manquantes : vérifiez la connexion ou choisissez le fournisseur Wikimedia (CORS autorisé), puis réexportez.", true);
+    }
   }catch(e){
     console.error(e);
     toast("Erreur pendant l'export .ai : " + e.message, true);
