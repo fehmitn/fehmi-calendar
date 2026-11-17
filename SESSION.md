@@ -106,10 +106,21 @@ Un `.ai` est un **PDF 1.4 avec extension .ai** : Illustrator l'ouvre nativement
   2. BaseFont Helvetica → **Arial** : Windows ne fournit pas Helvetica → les
      visionneurs affichaient un dialogue « polices manquantes » sans fin. Arial est
      métriquement identique et présente sur Windows/macOS/iOS.
-  3. Harness Node + Python **récréés dans `test/`** (SESSION.md §4 décrivait le
-     principe) : `node test/harness-ai.mjs` génère `test/calendrier-test.ai`
-     (photo picsum réelle, polices Helvetica→null) ; `python test/check_ai.py`
-     (PyMuPDF, installé) liste les XObjects et rend les pages 1-2 en PNG.
+  3. **Fonds aplatis (_bakePage)** — Vector Craft montrait une « clipping path
+     collée à l'image » et des images invisibles : l'ancien fond PDF empilait
+     Shading (dégradé) + clip (re W n) + ExtGState (opacité/voiles) + carte blanche
+     semi-transparente par-dessus l'image. Désormais, à l'export, chaque fond
+     (dégradé + photo zoom/position/opacité + voile sombre + voile couverture +
+     carte) est dessiné dans un canvas et rasterisé en un seul JPEG 1600 px
+     (~193 dpi). Le PDF ne contient plus que : 1 image pleine page (sans clip ni
+     gs) + texte/tracés vectoriels opaques. Vérifié (test/scan_ai.py) :
+     0 ExtGState, 0 Shading, 0 clip, 0 arc. Repli historique conservé dans
+     bgBlock pour les images non aplaties (harness Node, pas de canvas).
+  4. Harness Node + Python récréés dans test/ : node test/harness-ai.mjs
+     génère test/calendrier-test.ai (repli) ET test/calendrier-test-baked.ai
+     (chemin aplati réel) ; python test/check_ai.py (PyMuPDF, installé) liste les
+     XObjects et rend les pages en PNG ; test/scan_ai.py compte les opérateurs
+     sensibles. Artefacts ignorés via .gitignore.
 - Le logo du pied de page est aussi intégré (même chaîne).
 
 ### Harness de test Node (à recréer si besoin)

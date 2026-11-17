@@ -216,6 +216,60 @@ async function _blobToJpeg(blob, maxW){
   if(bmp.close) bmp.close();
   return out;
 }
+
+/* ============================================================
+   APLATISSEMENT DU FOND — compatibilité maximale des visionneurs
+   Le dégradé + la photo (zoom/position/opacité) + les voiles + la
+   carte blanche semi-transparente sont dessinés dans un canvas et
+   rasterisés en un seul JPEG. Le PDF n'a alors plus besoin de
+   Shading, d'ExtGState (transparence) ni de clipping path autour
+   des images — trois sources connues de problèmes (Vector Craft).
+   ============================================================ */
+async function _bakePage(i, box, bmp){
+  const p = state.pages[i];
+  const W = 1600, H = Math.round(W * PH / PW);   // ~193 dpi sur 210 mm
+  const s = W / PW;                              // pt → px
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  x.fillStyle = "#ffffff"; x.fillRect(0, 0, W, H);
+  /* dégradé + photo + voiles, confinés à la zone du fond (box) */
+  x.save();
+  x.beginPath(); x.rect(box.x * s, box.y * s, box.w * s, box.h * s); x.clip();
+  const g = x.createLinearGradient(0, 0, W, H);  // haut-gauche → bas-droite (comme le Shading PDF)
+  const cols = GRADS[i];
+  g.addColorStop(0, cols[0]); g.addColorStop(0.55, cols[1]); g.addColorStop(1, cols[2]);
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  if(bmp){
+    const s0 = Math.max(box.w / bmp.width, box.h / bmp.height) * (p.zoom / 100);
+    const cx = box.x + box.w * (p.x / 100), cy = box.y + box.h * (1 - p.y / 100);
+    x.globalAlpha = Math.max(0, Math.min(1, p.opacity / 100));
+    x.drawImage(bmp, (cx - bmp.width * s0 / 2) * s, (cy - bmp.height * s0 / 2) * s,
+      bmp.width * s0 * s, bmp.height * s0 * s);
+    x.globalAlpha = 1;
+  }
+  if(p.dark > 0){
+    x.globalAlpha = p.dark / 100; x.fillStyle = "#000000";
+    x.fillRect(box.x * s, box.y * s, box.w * s, box.h * s); x.globalAlpha = 1;
+  }
+  if(i === 0){ // voile de couverture (rect 45 % de coverPage)
+    x.globalAlpha = 0.45; x.fillStyle = "#000000";
+    x.fillRect(box.x * s, box.y * s, box.w * s, box.h * s); x.globalAlpha = 1;
+  }
+  x.restore();
+  /* carte du calendrier (mois uniquement) — aplatissée aussi */
+  if(i > 0){
+    const card = p.layout === "split"
+      ? { x: PW / 2, y: 0, w: PW / 2, h: PH - mm(21) }
+      : { x: mm(7), y: mm(5), w: PW - mm(14), h: PH - mm(26) };
+    if(p.layout !== "split") x.globalAlpha = 0.87;
+    x.fillStyle = "#ffffff";
+    x.fillRect(card.x * s, card.y * s, card.w * s, card.h * s);
+    x.globalAlpha = 1;
+  }
+  const durl = c.toDataURL("image/jpeg", 0.9);
+  return { bytes: _dataURLBytes(durl), w: W, h: H, baked: true };
+}
 async function _imgToJpeg(el){
   const src = el.getAttribute("src");
   if(!src) return null;
@@ -351,8 +405,14 @@ function _buildPDF(imgs, logoImg, fonts){
     return "q " + _rg(color) + " " + _n(w) + " w " + _n(x) + " " + _n(y0) + " m " + _n(x) + " " + _n(y1) + " l S\nQ\n";
   }
 
-  /* --- fond : dégradé + image recadrée (object-fit cover) + voile --- */
+  /* --- fond : image « aplatie » (dégradé + photo + voiles + carte rasterisés)
+         → aucune transparence, aucun clipping, aucun shading dans le PDF --- */
   function bgBlock(i, box, im){
+    if(im && im.baked){
+      const k = PW / im.w;
+      return "q " + _n(k) + " 0 0 " + _n(k) + " 0 0 cm /" + regim(im) + " Do\nQ\n";
+    }
+    /* repli (image non aplatie — usage du harness) : chemin historique */
     const p = state.pages[i];
     let s = "q " + _n(box.x) + " " + _n(box.y) + " " + _n(box.w) + " " + _n(box.h) + " re W n\n";
     s += "/" + regsh(GRADS[i]) + " sh\nQ\n";
@@ -375,7 +435,7 @@ function _buildPDF(imgs, logoImg, fonts){
     const split = p.layout === "split";
     const box = split ? { x: 0, y: 0, w: PW / 2, h: PH } : { x: 0, y: 0, w: PW, h: PH };
     let s = bgBlock(i, box, imgs[i]);
-    s += rect(box.x, box.y, box.w, box.h, "#000000", reggs(0.45));
+    if(!(imgs[i] && imgs[i].baked)) s += rect(box.x, box.y, box.w, box.h, "#000000", reggs(0.45));
     const cx = box.x + box.w / 2;
     s += txt("CALENDRIER DE BUREAU", cx, PH - mm(30) - mm(4) * 0.78, 4, true, "#ffffff",
       { align: "center", tc: mm(1.2) });
@@ -405,8 +465,8 @@ function _buildPDF(imgs, logoImg, fonts){
       ? { x: PW / 2, y: 0, w: PW / 2, h: PH - mm(21) }  // respecte la zone de reliure 18 mm (comme le plein écran)
       : { x: mm(7), y: mm(5), w: PW - mm(14), h: PH - mm(26) };
     s += split
-      ? rect(card.x, card.y, card.w, card.h, "#ffffff")
-      : rect(card.x, card.y, card.w, card.h, "#ffffff", reggs(0.87));
+      ? (imgs[i] && imgs[i].baked ? "" : rect(card.x, card.y, card.w, card.h, "#ffffff"))
+      : (imgs[i] && imgs[i].baked ? "" : rect(card.x, card.y, card.w, card.h, "#ffffff", reggs(0.87)));
     const x0 = card.x + (split ? mm(5) : mm(4.5));
     const x1 = card.x + card.w - mm(4.5);
     const yTop = card.y + card.h - (split ? mm(5) : mm(3));
@@ -612,19 +672,30 @@ function _buildPDF(imgs, logoImg, fonts){
 async function exportAI(){
   if(exportAI.busy) return;
   exportAI.busy = true;
-  toast("Génération du fichier .ai (polices + photos intégrées)…");
+  toast("Génération du fichier .ai (aplatissement des fonds + photos intégrées)…");
   try{
     const imgs = [];
     for(let i = 0; i < 13; i++){
       const el = pagesEl.querySelector('.page[data-i="' + i + '"] .bgimg');
       imgs[i] = el && el.getAttribute("src") ? await _imgToJpeg(el) : null;
     }
+    const nPhotos = imgs.filter(Boolean).length;
+    /* aplatir chaque fond : dégradé + photo + voiles + carte → un seul JPEG
+       (supprime Shading / ExtGState / clipping path autour des images) */
+    for(let i = 0; i < 13; i++){
+      const p = state.pages[i];
+      const split = p.layout === "split";
+      const box = split ? { x: 0, y: 0, w: PW / 2, h: PH } : { x: 0, y: 0, w: PW, h: PH };
+      let bmp = null;
+      if(imgs[i]) bmp = await createImageBitmap(new Blob([imgs[i].bytes], { type: "image/jpeg" }));
+      imgs[i] = await _bakePage(i, box, bmp);
+      if(bmp && bmp.close) bmp.close();
+    }
     let logo = null;
     if(state.footer.logo){
       const le = pagesEl.querySelector('.page[data-i="1"] .pfoot img');
       if(le) logo = await _imgToJpeg(le);
     }
-    const nPhotos = imgs.filter(Boolean).length;
     let fonts = null;
     try{
       const [a, b] = await Promise.all([_getFont("reg"), _getFont("bold")]);
@@ -633,7 +704,7 @@ async function exportAI(){
     const chunks = _buildPDF(imgs, logo, fonts);
     const blob = new Blob(chunks, { type: "application/postscript" });
     _download(blob, "calendrier-" + state.year + ".ai");
-    const fMsg = "polices Helvetica (compatibilité maximale — substitution automatique par les visionneurs)";
+    const fMsg = "polices Arial (compatibilité maximale) — fonds aplatis (aucune transparence)";
     if(nPhotos === 13){
       toast("✓ .ai exporté — 13/13 photos, " + fMsg);
     }else{

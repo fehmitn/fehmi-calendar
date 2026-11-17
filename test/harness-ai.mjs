@@ -72,7 +72,8 @@ const img = { bytes, w: dims.w, h: dims.h };
 const imgs = Array.from({ length: 13 }, () => img);
 
 console.log("Construction du PDF…");
-const chunks = api._buildPDF(imgs, img, null);   // fonts = null → Helvetica
+/* Variante 1 : chemin de repli (images non aplati­es) */
+const chunks = api._buildPDF(imgs, img, null);   // fonts = null → Arial
 const total = chunks.reduce((a, c) => a + c.length, 0);
 const out = new Uint8Array(total);
 let o = 0;
@@ -80,3 +81,14 @@ for(const c of chunks){ out.set(c, o); o += c.length; }
 const outPath = join(here, "calendrier-test.ai");
 writeFileSync(outPath, out);
 console.log("Écrit :", outPath, (total / 1024 / 1024).toFixed(2) + " Mo");
+
+/* Variante 2 : chemin réel du navigateur (fonds aplatis, baked:true) */
+const baked = imgs.map(m => ({ bytes: m.bytes, w: m.w, h: m.h, baked: true }));
+const chunks2 = api._buildPDF(baked, { ...img, baked: true }, null);
+const total2 = chunks2.reduce((a, c) => a + c.length, 0);
+const out2 = new Uint8Array(total2);
+o = 0;
+for(const c of chunks2){ out2.set(c, o); o += c.length; }
+const outPath2 = join(here, "calendrier-test-baked.ai");
+writeFileSync(outPath2, out2);
+console.log("Écrit :", outPath2, (total2 / 1024 / 1024).toFixed(2) + " Mo");
