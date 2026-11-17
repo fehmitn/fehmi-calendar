@@ -18,6 +18,33 @@ Studio de création de **calendrier de bureau chevalet à spirale** (210 × 105 
 - **Export .ai (Illustrator)** : PDF 13 pages, texte/tracés vectoriels, photos intégrées — au choix en JPEG (léger) ou PNG/Flate (compatibilité visionneurs)
 - Sauvegarde automatique de tous les réglages dans le localStorage
 
+## Langue des jours fériés (Français / العربية)
+
+Dans la barre latérale, section **« Fêtes & jours fériés »** :
+
+- **Langue du calendrier** : `Français` ou `العربية` — le changement est immédiat et mémorisé.
+- **Portée** : `Fériés seulement` (actif aujourd'hui) ou `Tout le calendrier` (grisé, prévu plus tard).
+
+Concrètement, seuls les **noms des jours fériés** changent de langue (légende sous la grille,
+infobulles, éditeur de jour), y compris dans l'**export PDF navigateur**. Les libellés que
+vous avez saisis vous-même ne sont jamais traduits.
+
+> Limites connues : l'export `.ai` reste en **français** (Arial n'a pas de glyphes arabes),
+> et les noms de mois / jours de la semaine ne sont pas encore traduits.
+
+## Tests (développement)
+
+```bash
+node test/check_labels.mjs      # toutes les traductions arabes présentes
+node test/bake_geometry.mjs    # géométrie du fond aplati (miroir Y)
+node test/harness-ai.mjs       # génère 3 .ai de test
+python test/check_ai.py        # PDFium (moteur Chrome) : ouverture + rendu
+python test/scan_ai.py         # 0 ExtGState / Shading / clip / arc
+```
+
 ## Utilisation
 
 Ouvrir `index.html` dans un navigateur (Chrome/Edge recommandé), puis **Exporter en PDF (Prêt à imprimer)**.
+
+Le site est aussi en ligne : **https://fehmitn.github.io/fehmi-calendar/** — chaque `git push`
+sur `main` redéploie automatiquement GitHub Pages (1–2 min).

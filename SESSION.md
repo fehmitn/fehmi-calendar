@@ -2,7 +2,8 @@
 
 > **But de ce fichier** : tout ce qu'il faut savoir pour continuer ce projet sur une
 > nouvelle machine après un `git clone https://github.com/fehmitn/fehmi-calendar.git`.
-> Dernière mise à jour : 17 nov. 2026 — **export .ai réparé (cause racine trouvée)**.
+> Dernière mise à jour : 17 nov. 2026 — **export .ai réparé** + **option langue des fériés
+> Français / العربية** (portée « fériés seulement »).
 
 ---
 
@@ -28,6 +29,8 @@ jours fériés tunisiens automatiques, photos de fond personnalisables, export
 | `test/harness-ai.mjs` | Harness Node : génère 3 `.ai` de test sans navigateur |
 | `test/check_ai.py` | Validation **PDFium** (moteur de Chrome) + rendu PNG (pip install pypdfium2) |
 | `test/scan_ai.py` | Compte les opérateurs sensibles (ExtGState/Shading/clip/arc) |
+| `test/bake_geometry.mjs` | Vérifie le miroir Y de `_bakePage` (canvas simulé) |
+| `test/check_labels.mjs` | Vérifie que chaque férié a bien sa traduction arabe (`AR_LABELS`) |
 | `README.md` | Doc utilisateur |
 | `SESSION.md` | Ce fichier |
 
@@ -133,6 +136,8 @@ compatibilité visionneurs). Le fichier produit est un **PDF 1.4 portant l'exten
 node test/harness-ai.mjs          # écrit 3 .ai de test dans test/
 python test/check_ai.py           # PDFium : ouverture + rendu PNG + pixel central
 python test/scan_ai.py            # compte ExtGState/Shading/clip/arc (doit être 0)
+node test/bake_geometry.mjs       # géométrie du fond aplati (carte en bas de page)
+node test/check_labels.mjs        # libellés FR → traductions arabes complètes
 ```
 
 - **PDFium est la référence** ; MuPDF (`fitz`) est trop tolérant (il ouvrait même les
@@ -160,7 +165,8 @@ python test/scan_ai.py            # compte ExtGState/Shading/clip/arc (doit êtr
 | `f602387` | Export .ai réparé : en-tête %PDF, cm des images corrigé, JPEG/Flate au choix, validation PDFium |
 | `0c8b598` | Miroir Y PDF→canvas dans `_bakePage` (carte blanche en bas, légende lisible) + test de géométrie |
 | `9dab809` | Mois sans férié : plus de message « Aucun jour férié ce mois » (app + `.ai`) |
-| **suivant** | **Langue des fériés FR / العربية** (app + PDF navigateur ; `.ai` encore en français) + test `check_labels.mjs` |
+| `f350be0` | **Langue des fériés FR / العربية** : bascule + portée « fériés seulement », `AR_LABELS`, `holLabel()`, test `check_labels.mjs` — `.ai` encore en français |
+| **à faire** | « Tout le calendrier » en arabe (mois, jours, chiffres, RTL) — bouton déjà présent, `disabled`. Voir §3. |
 
 ---
 
@@ -183,6 +189,7 @@ git clone https://github.com/fehmitn/fehmi-calendar.git
 cd fehmi-calendar
 # ouvrir index.html dans le navigateur pour tester
 # modifier export-ai.js ? → node test/harness-ai.mjs ; python test/check_ai.py ; python test/scan_ai.py
+# fonds aplatis / couleurs / traductions ? → node test/bake_geometry.mjs ; node test/check_labels.mjs
 # chaque modification : git add -A ; git commit -m "..." ; git push
 # → le site https://fehmitn.github.io/fehmi-calendar/ se met à jour automatiquement
 ```
