@@ -1,3 +1,4 @@
 # Artefacts de test générés localement
 test/calendrier-test*.ai
 test/render-*.png
+test/pdfium-*.png
