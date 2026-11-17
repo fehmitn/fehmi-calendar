@@ -24,6 +24,12 @@ for name in ("calendrier-test.ai", "calendrier-test-baked.ai", "calendrier-test-
         # un pixel du centre doit être non blanc si une photo est dessinée
         centre = img.getpixel((img.width // 2, img.height // 2))
         print(f"{name}: OK, {len(doc)} pages, centre={centre[:3]} -> {os.path.basename(out)}")
+        # régression : un mois sans férié ne doit afficher AUCUN message
+        text = "\n".join(
+            doc[i].get_textpage().get_text_range() for i in range(len(doc))
+        )
+        n = text.count("Aucun jour")
+        print("   message « Aucun jour férié » :", n, "->", "OK" if n == 0 else "ECHEC")
         doc.close()
     except Exception as e:
         print(f"{name}: ECHEC -> {e}")

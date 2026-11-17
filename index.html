@@ -197,7 +197,6 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
 .legend .li{font-size:2.3mm; color:#333; display:flex; align-items:center; gap:0.8mm; font-weight:500;}
 .legend .li .dot{width:1.6mm; height:1.6mm; border-radius:50%; flex:none;}
 .legend .li.t-fixed .dot{background:#dc2626;} .legend .li.t-islamic .dot{background:#0891b2;} .legend .li.t-custom .dot{background:#d97706;}
-.legend .none{font-size:2.2mm; color:#999;}
 
 /* Pied de page société */
 .pfoot{display:flex; align-items:center; gap:2.4mm; margin-top:1.2mm; padding-top:1mm; border-top:0.3px solid #0002; min-height:5.4mm;}
@@ -603,17 +602,14 @@ function monthInner(y, m){
     cells += '<div class="cell clickable' + we + hc + '" data-k="' + dayKey(y, m, d) + '" title="' + (h ? esc(h.label) : "Cliquez pour éditer") + '">' +
              '<span class="n">' + d + "</span>" + (h ? '<span class="tdot"></span>' : "") + "</div>";
   }
-  let legend = "";
-  if(hols.length){
-    legend = hols.map(h => '<span class="li t-' + h.type + '"><i class="dot"></i>' + h.d + " " + esc(h.label) + "</span>").join("");
-  }else{
-    legend = '<span class="none">Aucun jour férié ce mois — cliquez un jour pour en ajouter</span>';
-  }
+  /* Mois sans férié : on n'affiche rien du tout (ni légende, ni message). */
+  const legend = hols.length
+    ? '<div class="legend">' + hols.map(h => '<span class="li t-' + h.type + '"><i class="dot"></i>' + h.d + " " + esc(h.label) + "</span>").join("") + "</div>"
+    : "";
   const foot = pfootHTML();
   return '<div class="calhead"><div class="mname">' + MONTHS[m] + '</div><div class="ytag">' + y + "</div></div>" +
     '<div class="dowrow">' + DOW.map((w, i) => '<span class="' + (i >= 5 ? "we" : "") + '">' + w + "</span>").join("") + "</div>" +
-    '<div class="daygrid">' + cells + "</div>" +
-    '<div class="legend">' + legend + "</div>" + foot;
+    '<div class="daygrid">' + cells + "</div>" + legend + foot;
 }
 function coverInner(y){
   const foot = pfootHTML();

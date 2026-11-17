@@ -555,13 +555,13 @@ function _buildPDF(imgs, logoImg, fonts){
       }
     }
 
-    /* légende des fêtes */
+    /* légende des fêtes — mois sans férié : rien du tout (pas de ligne, pas de texte) */
     const legLine = yBot + footH + mm(0.6);
-    s += hline(x0, x1, legLine, "#d0d5dd", 0.4);
     const legBase = legLine + mm(1) + mm(2.3) * 0.8;
     const hols = monthHolidays(yr, m);
-    let lx = x0;
     if(hols.length){
+      s += hline(x0, x1, legLine, "#d0d5dd", 0.4);
+      let lx = x0;
       hols.forEach(h => {
         const dc = h.type === "fixed" ? "#dc2626" : h.type === "islamic" ? "#0891b2" : "#d97706";
         s += circle(lx + mm(0.8), legBase + mm(0.8), mm(0.8), dc);
@@ -569,8 +569,6 @@ function _buildPDF(imgs, logoImg, fonts){
         s += txt(label, lx + mm(2), legBase, 2.3, false, "#374151");
         lx += mm(2) + _tw(label, mm(2.3), false) + mm(3);
       });
-    }else{
-      s += txt("Aucun jour férié ce mois", x0, legBase, 2.2, false, "#9aa3b0");
     }
 
     /* pied de page société */
