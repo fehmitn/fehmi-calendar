@@ -48,6 +48,22 @@ jours fériés tunisiens automatiques, photos de fond personnalisables, export
   grâce au repli `Intl.DateTimeFormat("en-u-ca-islamic-c")` → fonction `hijriViaIntl`).
 - **Clic sur un jour** → bascule « jour férié » / édition du libellé (modal) ; légende
   discrète sous la grille (petits points de 1,5 mm) ; week-ends surlignés.
+- **Langue des jours fériés** (barre latérale, section « Fêtes & jours fériés ») :
+  bascule `#langSwitch` **Français / العربية** + portée `#langScope`
+  (**Fériés seulement** = actif, **Tout le calendrier** = désactivé/à venir).
+  - État : `state.holidayLang` (`"fr"` | `"ar"`) et `state.langScope` (`"holidays"`).
+  - Traductions : constante `AR_LABELS` (13 libellés) + fonction `holLabel(label)`.
+    **Traduction à l'affichage uniquement** : les données (`FIXED_HOLIDAYS`,
+    `ISLAMIC_TARGETS`, overrides, cache AlAdhan) restent en français — ne jamais
+    stocker l'arabe à leur place. Un libellé personnalisé n'est jamais traduit.
+  - Appliqué : légende du mois, `title` des cases, éditeur de jour, **et donc l'export
+    PDF navigateur** (`window.print()` rend l'arabe nativement).
+  - **Non appliqué dans l'export `.ai`** : le fichier utilise Arial Type1/WinAnsi, qui
+    n'a **aucun glyphe arabe** (et le Type0/Identity-H embarqué avait échoué dans
+    Vector Craft — cf. §4). Les fériés y restent donc en français.
+  - **TODO « Tout le calendrier »** : traduire `MONTHS`, `DOW`, chiffres et passer les
+    cartes en RTL (attribut `dir`, alignements, ordre des colonnes). Le bouton existe
+    déjà mais est `disabled` ; ne pas l'activer avant d'avoir implémenté le rendu RTL.
 - **13 pages** 210 × 105 mm ; zone de reliure Wire-O **18 mm** visible à l'écran,
   masquée à l'impression ; `@page { size: 210mm 105mm; margin: 0; }` ; export via
   `window.print()`.
@@ -72,6 +88,12 @@ jours fériés tunisiens automatiques, photos de fond personnalisables, export
 Le bouton « ✒ Exporter .ai (Illustrator) » ouvre une petite modale avec **2 encodages**
 pour les photos de fond : **JPEG** (léger) ou **PNG/Flate** (plus lourd, meilleure
 compatibilité visionneurs). Le fichier produit est un **PDF 1.4 portant l'extension .ai**.
+
+> **Langue** : le `.ai` écrit toujours les fériés **en français**, même si l'option
+> العربية est active. Arial Type1/WinAnsi n'a pas de glyphes arabes ; l'embarquement
+> d'une police arabe (Type0/Identity-H + shaping) est un chantier à part et avait déjà
+> échoué dans Vector Craft. Alternative possible plus tard : rasteriser la seule légende
+> arabe dans le fond aplati (`_bakePage`) — voir §3.
 
 ### Structure du fichier
 
@@ -135,7 +157,10 @@ python test/scan_ai.py            # compte ExtGState/Shading/clip/arc (doit êtr
 | `a9b9f97` | arc→Bézier, Helvetica→Arial |
 | `e129bf4` | Fonds aplatis en raster (canvas) |
 | `1e3e906` | Suppression provisoire de l'export .ai |
-| **suivant** | **Export .ai réparé** : en-tête %PDF, cm des images corrigé, JPEG/Flate au choix, validation PDFium |
+| `f602387` | Export .ai réparé : en-tête %PDF, cm des images corrigé, JPEG/Flate au choix, validation PDFium |
+| `0c8b598` | Miroir Y PDF→canvas dans `_bakePage` (carte blanche en bas, légende lisible) + test de géométrie |
+| `9dab809` | Mois sans férié : plus de message « Aucun jour férié ce mois » (app + `.ai`) |
+| **suivant** | **Langue des fériés FR / العربية** (app + PDF navigateur ; `.ai` encore en français) + test `check_labels.mjs` |
 
 ---
 

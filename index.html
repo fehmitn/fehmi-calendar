@@ -89,6 +89,7 @@ input[type=text]:focus, input[type=number]:focus{border-color:var(--accent);}
   border-radius:7px; cursor:pointer; font-size:11.5px;
 }
 .radio2 button.on{border-color:var(--accent); color:var(--accent); background:#0f2e2b; font-weight:600;}
+.radio2 button:disabled{opacity:.4; cursor:not-allowed;}
 .dropzone{
   border:1.5px dashed #33415f; border-radius:9px; padding:10px; text-align:center;
   color:var(--muted); font-size:11.5px; cursor:pointer; transition:.15s; margin-bottom:9px;
@@ -319,6 +320,16 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
 
     <div class="sec">
       <h3>Fêtes &amp; jours fériés</h3>
+      <div class="row" style="margin-bottom:6px;"><label class="slbl" style="width:auto;">Langue du calendrier</label></div>
+      <div class="radio2" id="langSwitch">
+        <button data-l="fr">Français</button>
+        <button data-l="ar" lang="ar">العربية</button>
+      </div>
+      <div class="radio2" id="langScope" style="margin-top:6px;">
+        <button data-s="holidays">Fériés seulement</button>
+        <button data-s="all" disabled title="Bientôt disponible : mois, jours de la semaine et chiffres">Tout le calendrier</button>
+      </div>
+      <div class="hint" style="margin:6px 0 8px;">« Tout le calendrier » (noms des mois, jours de la semaine, chiffres) n'est pas encore disponible — seuls les <b>noms des jours fériés</b> changent de langue.</div>
       <div class="statusline" id="hijriStatus">Chargement des fêtes islamiques…</div>
       <button class="btn small" id="reFetchBtn" style="margin-top:9px;">↻ Recalculer les fêtes</button>
       <div class="hint">
@@ -394,6 +405,31 @@ const ISLAMIC_TARGETS = {          // clé "jourHijri-moisHijri"
   "1-10":"Aïd el-Fitr",
   "10-12":"Aïd el-Adha"
 };
+/* Libellés arabes des fériés (traduction à l'affichage — les données internes
+   restent en français pour ne pas casser le cache, les overrides ni l'API). */
+const AR_LABELS = {
+  "Nouvel An":"رأس السنة الميلادية",
+  "Fête de l'Indépendance":"عيد الاستقلال",
+  "Journée des Martyrs":"عيد الشهداء",
+  "Fête du Travail":"عيد العمال",
+  "Fête de la République":"عيد الجمهورية",
+  "Fête de la Femme":"عيد المرأة",
+  "Fête de l'Évacuation":"عيد الجلاء",
+  "Fête de la Révolution":"عيد الثورة",
+  "Ras el-Am el-Hijri":"رأس السنة الهجرية",
+  "Début du Ramadan":"بداية شهر رمضان",
+  "Mouled An-Nabawi":"المولد النبوي الشريف",
+  "Aïd el-Fitr":"عيد الفطر",
+  "Aïd el-Adha":"عيد الأضحى"
+};
+/* Langue du calendrier : "fr" | "ar" (state.holidayLang).
+   Portée : pour l'instant « fériés seulement » (les libellés saisis à la main
+   ne sont jamais traduits). « Tout le calendrier » est prévu — voir SESSION.md. */
+function holLabel(label){
+  if(!label) return label;
+  if(state.holidayLang !== "ar") return label;
+  return AR_LABELS[label] || label;
+}
 const WIKI_KEYWORDS = [ // mot-clé Wikimedia Commons par page (couverture + 12 mois)
   "Tunisia landscape",
   "winter mountains snow",
@@ -430,6 +466,8 @@ function defaultState(){
     current: 0,          // 0 = couverture, 1..12 = mois
     viewMode: "single",
     provider: "wikimedia", // fournisseur d'images par défaut : wikimedia | picsum | none
+    holidayLang: "fr",     // langue des libellés de fériés : fr | ar
+    langScope: "holidays", // portée de la traduction : holidays (seul mode actif) | all (à venir)
     footer: { logo:null, company:"", phone:"", site:"" },
     overrides: {},       // overrides[année]["2027-03-09"] = {holiday:true,label} | {holiday:false}
     pages: Array.from({length:13}, () => ({
@@ -599,12 +637,13 @@ function monthInner(y, m){
     const we = dow >= 5 ? " we" : "";
     const h = holidayFor(y, m, d);
     const hc = h ? " h-" + h.type : "";
-    cells += '<div class="cell clickable' + we + hc + '" data-k="' + dayKey(y, m, d) + '" title="' + (h ? esc(h.label) : "Cliquez pour éditer") + '">' +
+    cells += '<div class="cell clickable' + we + hc + '" data-k="' + dayKey(y, m, d) + '" title="' + (h ? esc(holLabel(h.label)) : "Cliquez pour éditer") + '">' +
              '<span class="n">' + d + "</span>" + (h ? '<span class="tdot"></span>' : "") + "</div>";
   }
   /* Mois sans férié : on n'affiche rien du tout (ni légende, ni message). */
   const legend = hols.length
-    ? '<div class="legend">' + hols.map(h => '<span class="li t-' + h.type + '"><i class="dot"></i>' + h.d + " " + esc(h.label) + "</span>").join("") + "</div>"
+    ? '<div class="legend">' +
+      hols.map(h => '<span class="li t-' + h.type + '"><i class="dot"></i>' + h.d + " " + esc(holLabel(h.label)) + "</span>").join("") + "</div>"
     : "";
   const foot = pfootHTML();
   return '<div class="calhead"><div class="mname">' + MONTHS[m] + '</div><div class="ytag">' + y + "</div></div>" +
@@ -795,6 +834,11 @@ function renderSidebar(){
   // Fournisseur d'images par défaut
   document.querySelectorAll("#provSwitch button").forEach(b =>
     b.classList.toggle("on", b.dataset.p === state.provider));
+  // Langue des fériés
+  document.querySelectorAll("#langSwitch button").forEach(b =>
+    b.classList.toggle("on", b.dataset.l === (state.holidayLang || "fr")));
+  document.querySelectorAll("#langScope button").forEach(b =>
+    b.classList.toggle("on", b.dataset.s === (state.langScope || "holidays")));
   // Pied de page
   $("fCompany").value = state.footer.company;
   $("fPhone").value = state.footer.phone;
@@ -876,6 +920,20 @@ document.querySelectorAll("#provSwitch button").forEach(b => b.onclick = () => {
   state.provider = b.dataset.p;
   save(); renderAll();
   toast("Fournisseur d'images : " + b.textContent.trim());
+});
+
+// Langue des jours fériés (FR / arabe) — portée « fériés seulement » pour l'instant
+document.querySelectorAll("#langSwitch button").forEach(b => b.onclick = () => {
+  if((state.holidayLang || "fr") === b.dataset.l) return;
+  state.holidayLang = b.dataset.l;
+  state.langScope = "holidays";                    // seule portée disponible
+  save(); renderAll();
+  toast(b.dataset.l === "ar" ? "Noms des fériés en arabe" : "Noms des fériés en français");
+});
+document.querySelectorAll("#langScope button").forEach(b => b.onclick = () => {
+  if(b.disabled) return;
+  state.langScope = b.dataset.s;
+  save(); renderAll();
 });
 
 const mainArea = $("mainArea");
@@ -981,8 +1039,8 @@ function openDayEditor(key){
   $("mHol").checked = !!h;
   $("mLabel").value = ov && ov.holiday ? (ov.label || "") : (h ? h.label : "");
   let info = [];
-  if(fixed) info.push("Férié tunisien fixe : <b>" + esc(fixed) + "</b>");
-  if(isl) info.push("Fête islamique (AlAdhan) : <b>" + esc(isl) + "</b>");
+  if(fixed) info.push("Férié tunisien fixe : <b>" + esc(holLabel(fixed)) + "</b>");
+  if(isl) info.push("Fête islamique (AlAdhan) : <b>" + esc(holLabel(isl)) + "</b>");
   if(ov) info.push("Personnalisation enregistrée sur ce jour.");
   if(!info.length) info.push("Jour ordinaire — cochez « Jour férié » pour le définir.");
   $("mInfo").innerHTML = info.join("<br>");

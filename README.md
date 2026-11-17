@@ -7,6 +7,7 @@ Studio de création de **calendrier de bureau chevalet à spirale** (210 × 105 
 - **Année modifiable** (défaut 2027) avec recalcul complet : mois en français, années bissextiles, semaines débutant le lundi
 - **Jours fériés tunisiens fixes** intégrés pour toute année
 - **Fêtes islamiques automatiques** via l'API gratuite AlAdhan (Aïd el-Fitr, Aïd el-Adha, Ras el-Am, Mouled, **Début du Ramadan**), cache localStorage, fallback hors-ligne (calendrier hégirien Intl)
+- **Langue des jours fériés** : bascule **Français / العربية** dans la barre latérale (les libellés saisis à la main ne sont jamais traduits). Portée actuelle : **noms des fériés seulement** ; l'option « tout le calendrier » (mois, jours de la semaine, chiffres) est prévue mais pas encore disponible — et l'export `.ai` reste en français pour l'instant.
 - **Édition au clic** de chaque jour : activer/désactiver le statut « férié », éditer le libellé (décalage lunaire)
 - **Images de fond par défaut** au choix : Wikimedia Commons (recherche thématique, sans clé API, filtre paysage) / Picsum Photos / Dégradé CSS hors-ligne — bouton « Changer de photo suggérée » par page
 - **Import personnalisé** par page (drag & drop ou sélecteur), curseurs Zoom / Position X / Y / Opacité / Voile sombre
