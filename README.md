@@ -1,6 +1,6 @@
 # Fehmi Calendar — Studio Chevalet
 
-Studio de création de **calendrier de bureau chevalet à spirale** (210 × 105 mm, 13 pages : couverture + 12 mois) en un seul fichier `index.html` — HTML5, CSS3, JavaScript vanilla, zéro dépendance.
+Studio de création de **calendrier de bureau chevalet à spirale** (210 × 105 mm, 13 pages : couverture + 12 mois) — HTML5, CSS3, JavaScript vanilla, zéro dépendance (`index.html` + `export-ai.js`).
 
 ## Fonctionnalités
 
@@ -14,6 +14,7 @@ Studio de création de **calendrier de bureau chevalet à spirale** (210 × 105 
 - **Pied de page société** (logo, nom, téléphone, site) répliqué sur les 12 mois
 - **Zone reliure Wire-O 18 mm** affichée à l'écran, masquée à l'impression
 - **Export PDF** prêt pour l'imprimeur : `@page { size: 210mm 105mm; margin: 0; }` via `window.print()`
+- **Export .ai (Illustrator)** : PDF 13 pages, texte/tracés vectoriels, photos intégrées — au choix en JPEG (léger) ou PNG/Flate (compatibilité visionneurs)
 - Sauvegarde automatique de tous les réglages dans le localStorage
 
 ## Utilisation

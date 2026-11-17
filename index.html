@@ -264,6 +264,7 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
   </div>
   <div class="grow"></div>
   <button class="btn" id="viewBtn">Voir les 13 pages</button>
+  <button class="btn" id="aiBtn">✒ Exporter .ai (Illustrator)</button>
   <button class="btn primary" id="exportBtn">⬇ Exporter en PDF (Prêt à imprimer)</button></header>
 
 <div class="shell">
@@ -345,6 +346,24 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
     <div class="actions">
       <button class="btn" id="mCancel">Annuler</button>
       <button class="btn primary" id="mSave">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal d'export .ai : encodage des photos -->
+<div class="modal" id="aiModal">
+  <div class="mbox" style="width:400px;">
+    <h4>✒ Export Illustrator (.ai)</h4>
+    <div class="msub">Fichier vectoriel 13 pages (210 × 105 mm) — texte et tracés éditables, photos intégrées.</div>
+    <div class="hint" style="border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:12px;">
+      Les photos de fond sont aplaties avec le dégradé et les voiles. Choisissez leur encodage :<br><br>
+      <b>JPEG</b> — fichier léger (~3 Mo), standard dans Acrobat / Illustrator.<br>
+      <b>PNG/Flate</b> — fichier lourd (~15 Mo) mais encodage sans perte, mieux rendu par certains visionneurs (Vector Craft).
+    </div>
+    <div class="actions">
+      <button class="btn" id="aiCancel" style="flex:0.6;">Annuler</button>
+      <button class="btn" id="aiJpeg">⬇ .ai JPEG</button>
+      <button class="btn primary" id="aiFlate">⬇ .ai PNG</button>
     </div>
   </div>
 </div>
@@ -976,7 +995,12 @@ function openDayEditor(key){
 }
 $("mCancel").onclick = () => modal.classList.remove("open");
 modal.addEventListener("click", e => { if(e.target === modal) modal.classList.remove("open"); });
-document.addEventListener("keydown", e => { if(e.key === "Escape") modal.classList.remove("open"); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  modal.classList.remove("open");
+  const am = document.getElementById("aiModal");
+  if(am) am.classList.remove("open");
+});
 $("mSave").onclick = () => {
   if(!editingKey) return;
   const [y, m, d] = editingKey.split("-").map(Number);
@@ -1010,5 +1034,6 @@ function toast(msg, err){
 renderAll();
 loadIslamicHolidays(state.year, false);
 </script>
+<script src="export-ai.js"></script>
 </body>
 </html>

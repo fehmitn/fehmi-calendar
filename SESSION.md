@@ -2,16 +2,16 @@
 
 > **But de ce fichier** : tout ce qu'il faut savoir pour continuer ce projet sur une
 > nouvelle machine après un `git clone https://github.com/fehmitn/fehmi-calendar.git`.
-> Dernière mise à jour : 17 nov. 2026 — l'export .ai a été **supprimé** (voir §4).
+> Dernière mise à jour : 17 nov. 2026 — **export .ai réparé (cause racine trouvée)**.
 
 ---
 
 ## 1. Le projet en une phrase
 
 **Studio de calendrier de bureau tunisien « chevalet à spirale »** : application web
-en un seul fichier qui génère un calendrier 13 pages (couverture + 12 mois, format
-210 × 105 mm) avec jours fériés tunisiens automatiques, photos de fond personnalisables
-et export **impression PDF**.
+qui génère un calendrier 13 pages (couverture + 12 mois, format 210 × 105 mm) avec
+jours fériés tunisiens automatiques, photos de fond personnalisables, export
+**impression PDF** et export **Illustrator (.ai)**.
 
 - **Site en ligne (GitHub Pages)** : https://fehmitn.github.io/fehmi-calendar/
 - **Dépôt** : https://github.com/fehmitn/fehmi-calendar (public, branche `main`, Pages activé sur `main` / racine)
@@ -23,11 +23,13 @@ et export **impression PDF**.
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | **Toute l'application** (CSS + JS inline, vanilla, aucune dépendance) |
-| `README.md` | Doc utilisateur du dépôt |
-| `SESSION.md` | Ce fichier (contexte de session) |
-
-Pour tester en local : ouvrir `index.html` dans un navigateur (double-clic suffit).
+| `index.html` | L'application (CSS + JS inline, vanilla, aucune dépendance) |
+| `export-ai.js` | Générateur du fichier `.ai` (PDF 1.4 : pages aplaties en raster + texte vectoriel) |
+| `test/harness-ai.mjs` | Harness Node : génère 3 `.ai` de test sans navigateur |
+| `test/check_ai.py` | Validation **PDFium** (moteur de Chrome) + rendu PNG (pip install pypdfium2) |
+| `test/scan_ai.py` | Compte les opérateurs sensibles (ExtGState/Shading/clip/arc) |
+| `README.md` | Doc utilisateur |
+| `SESSION.md` | Ce fichier |
 
 ---
 
@@ -45,7 +47,7 @@ Pour tester en local : ouvrir `index.html` dans un navigateur (double-clic suffi
   Cache `localStorage` **par année** : clé `chevaletHijri_v2_{annee}` (fonctionne hors ligne
   grâce au repli `Intl.DateTimeFormat("en-u-ca-islamic-c")` → fonction `hijriViaIntl`).
 - **Clic sur un jour** → bascule « jour férié » / édition du libellé (modal) ; légende
-  discrète sous la grille ; week-ends surlignés.
+  discrète sous la grille (petits points de 1,5 mm) ; week-ends surlignés.
 - **13 pages** 210 × 105 mm ; zone de reliure Wire-O **18 mm** visible à l'écran,
   masquée à l'impression ; `@page { size: 210mm 105mm; margin: 0; }` ; export via
   `window.print()`.
@@ -65,38 +67,55 @@ Pour tester en local : ouvrir `index.html` dans un navigateur (double-clic suffi
 
 ---
 
-## 4. Historique de l'export .ai — pourquoi il a été supprimé
+## 4. Export .ai — état actuel et pièges (À LIRE AVANT TOUT DEBUG)
 
-L'application a eu un export **.ai (Illustrator)** : un PDF 1.4 fait main
-(`export-ai.js`, supprimé) avec photos JPEG intégrées et polices intégrées. Il
-n'a **jamais fonctionné correctement chez l'utilisateur**, malgré plusieurs
-tentatives de correction :
+Le bouton « ✒ Exporter .ai (Illustrator) » ouvre une petite modale avec **2 encodages**
+pour les photos de fond : **JPEG** (léger) ou **PNG/Flate** (plus lourd, meilleure
+compatibilité visionneurs). Le fichier produit est un **PDF 1.4 portant l'extension .ai**.
 
-1. **Commit `5b98ac2`** — polices Roboto intégrées (Type0/Identity-H/FontFile2/ToUnicode,
-   2 passes) → texte **illisible dans Vector Craft** (visionneur vectoriel utilisé
-   par l'utilisateur) ; installer Roboto sur la machine a empiré les choses.
-2. **Commit `a9b9f97`** — retour au repli Helvetica, puis Helvetica → **Arial**
-   (Windows ne fournit pas Helvetica : les visionneurs demandaient sans fin les
-   polices manquantes). Le dialogue de polices persistait.
-3. **Opérateur PostScript `arc` invalide** dans les cercles des jours fériés (jamais
-   dessinés) → corrigé en courbes de Bézier (points visibles, validé MuPDF).
-4. **Commit `e129bf4`** — fonds **aplatiss en raster** (canvas) : dégradé + photo +
-   voiles + carte rasterisés en un seul JPEG par page, supprimant Shading /
-   ExtGState / clipping path (le « calque clipping path collé à l'image » signalé
-   par l'utilisateur). Scan vérifié : 0 ExtGState, 0 Shading, 0 clip, 0 arc.
-5. Malgré tout : **images toujours invisibles dans Vector Craft**, même avec un
-   PDF structurellement minimal (1 image pleine page + texte vectoriel, validé
-   indépendamment par MuPDF/PyMuPDF — les pages se rendaient parfaitement).
+### Structure du fichier
 
-**Conclusion de l'utilisateur** : Vector Craft ne rend visiblement pas les XObjects
-JPEG de ces fichiers. Décision : **suppression complète de l'export .ai**
-(fichiers `export-ai.js` et `test/` supprimés, boutons « ✒ Exporter .ai » et
-« 🔤 Polices .ai » et la modale des polices retirés de `index.html`).
-L'export reste **PDF via `window.print()`** (fiable, utilisé pour l'impression).
+- En-tête `%PDF-1.4` + commentaire binaire, puis objets : 1 catalogue, 2 pages,
+  3 infos, polices 30/31 (Arial/Arial-Bold Type1 WinAnsi), page i → objets `4+2i`
+  (Page) et `5+2i` (contenu) ; objets dynamiques à partir du compteur `next = 32`.
+- **Chaque page = 1 image raster pleine page** (le fond est *aplati* dans un canvas :
+  dégradé + photo avec zoom/position/opacité + voile sombre + voile de couverture +
+  carte blanche) + texte/tracés vectoriels opaques par-dessus. **Aucun** Shading,
+  ExtGState ou clipping path dans le fichier (vérifiable avec `test/scan_ai.py`).
+- `_bakePage()` (canvas, navigateur seulement) : 1600 px de large en JPEG, 1200 px en
+  Flate (octets RGB bruts + zlib via `CompressionStream('deflate')` → `/FlateDecode`).
+- Les points des jours fériés sont des **cercles de Bézier** (l'opérateur `arc` est du
+  PostScript, **invalide en PDF**).
 
-> Si un jour on veut re-tenter : le code a existé jusqu'au commit `77e3569`
-> (visible dans l'historique git). Le diagnostic PyMuPDF (pip install pymupdf)
-> et le harness Node étaient la bonne méthode de validation.
+### ⚠ Pièges déjà rencontrés (ne pas les réintroduire)
+
+1. **NEVER oublier l'en-tête `%PDF-1.4`** : MuPDF/Acrobat acceptent son absence, mais
+   **PDFium (Chrome, Edge, Vector Craft…) refuse le fichier** (« Data format error »).
+   C'était la cause n°1 des « images invisibles ».
+2. **Les images PDF sont peintes dans un carré unité (1×1 pt)** : le `cm` doit valoir la
+   taille finale en points (`PW × PH` pour un fond pleine page, `logoImg.w*sc × logoImg.h*sc`
+   pour un logo). Passer le facteur « points par pixel » (0,372) dessine un point
+   minuscule — l'image était donc **invisible depuis le début**, et le dégradé dessiné
+   derrière faisait croire à une photo.
+3. `arc` (PostScript) est invalide en PDF → utiliser des courbes `c`.
+4. Éviter ExtGState/Shading/clip autour des images : les visionneurs légers les gèrent mal.
+
+### Validation (obligatoire après toute modification de `export-ai.js`)
+
+```bash
+node test/harness-ai.mjs          # écrit 3 .ai de test dans test/
+python test/check_ai.py           # PDFium : ouverture + rendu PNG + pixel central
+python test/scan_ai.py            # compte ExtGState/Shading/clip/arc (doit être 0)
+```
+
+- **PDFium est la référence** ; MuPDF (`fitz`) est trop tolérant (il ouvrait même les
+  fichiers sans en-tête PDF). Ne jamais valider uniquement avec MuPDF.
+- Le harness simule l'état par défaut (année 2027, photos picsum) et ne peut pas exécuter
+  `_bakePage` (pas de canvas en Node) : la variante `baked` teste la structure, la
+  variante `flate` teste l'encodage. Le rendu réel des fonds aplatis se vérifie dans le
+  navigateur.
+- Le harness retire le bloc « MODALE D'EXPORT .ai » en fin de `export-ai.js` (câblage DOM)
+  avant d'exécuter le code dans une `Function`.
 
 ---
 
@@ -106,27 +125,24 @@ L'export reste **PDF via `window.print()`** (fiable, utilisé pour l'impression)
 |---|---|
 | `9a4bf98` | Application initiale complète |
 | `fc4eafe` | Export .ai + correction mise en page partagée + férié Ramadan |
-| `fa0d171` | Correctif CORS des photos (chaîne d'acquisition 4 niveaux + toast N/13) |
-| `5b98ac2` | Polices Roboto intégrées dans le .ai (Type0/Identity-H/FontFile2/ToUnicode) |
-| `a9b9f97` | Correctifs .ai : arc→Bézier, Helvetica→Arial, modale polices |
-| `e129bf4` | Fonds aplatis en raster (canvas) pour Vector Craft |
-| `77e3569` | Nettoyage gitignore artefacts de test |
-| **suivant** | **Suppression définitive de l'export .ai** |
+| `fa0d171` | Correctif CORS des photos + toast N/13 |
+| `5b98ac2` | Polices Roboto intégrées dans le .ai (Type0/Identity-H) — illisible dans Vector Craft |
+| `a9b9f97` | arc→Bézier, Helvetica→Arial |
+| `e129bf4` | Fonds aplatis en raster (canvas) |
+| `1e3e906` | Suppression provisoire de l'export .ai |
+| **suivant** | **Export .ai réparé** : en-tête %PDF, cm des images corrigé, JPEG/Flate au choix, validation PDFium |
 
 ---
 
 ## 6. Notes d'environnement
 
-- Windows PowerShell : pas d'opérateur `&&` (PowerShell 5.1) → utiliser `;`.
-- `node` disponible (v22) ; `python` 3.11 disponible (PyMuPDF installé si besoin :
-  `python -m pip install pymupdf`).
+- Windows PowerShell : pas d'opérateur `&&` en 5.1 → utiliser `;`.
+- `node` v22 (fetch, CompressionStream globaux) ; `python` 3.11 avec `pypdfium2`,
+  `pymupdf`, `pikepdf` installables via pip.
 - Git : identité configurée dans ce dépôt (`fehmitn`, email noreply GitHub).
-  Warning bénin « unable to connect to cache daemon » possible, **push OK**.
-- Sur un nouveau PC, après `git clone`, **rien à installer** : l'app est statique ;
-  tester en ouvrant `index.html`, publier avec
-  `git add -A ; git commit -m "…" ; git push`.
-- Clés localStorage à connaître (pour débugger) : `chevaletStudio_v1`,
-  `chevaletHijri_v2_{annee}`, `chevaletWiki_v1`.
+- Sur un nouveau PC, après `git clone` : ouvrir `index.html` suffit pour tester ;
+  publier avec `git add -A ; git commit -m "…" ; git push`.
+- Clés localStorage : `chevaletStudio_v1`, `chevaletHijri_v2_{annee}`, `chevaletWiki_v1`.
 
 ---
 
@@ -136,6 +152,7 @@ L'export reste **PDF via `window.print()`** (fiable, utilisé pour l'impression)
 git clone https://github.com/fehmitn/fehmi-calendar.git
 cd fehmi-calendar
 # ouvrir index.html dans le navigateur pour tester
+# modifier export-ai.js ? → node test/harness-ai.mjs ; python test/check_ai.py ; python test/scan_ai.py
 # chaque modification : git add -A ; git commit -m "..." ; git push
 # → le site https://fehmitn.github.io/fehmi-calendar/ se met à jour automatiquement
 ```
