@@ -154,18 +154,9 @@ function _parseTTF(b){
   }
   return { upem, bbox, asc, desc, gidFor, aw };
 }
-async function _getFont(kind){
-  for(const [url, name] of FONT_URLS[kind]){
-    try{
-      const r = await fetch(url);
-      if(!r.ok) continue;
-      const bytes = new Uint8Array(await r.arrayBuffer());
-      const f = _parseTTF(bytes);
-      if(f){ f.bytes = bytes; f.name = name; return f; }
-    }catch(e){ /* CDN suivant */ }
+  async function _getFont(kind){ // DÉSACTIVÉ : Vector Craft (et d'autres visionneurs) gèrent mal les Type0/FontFile2 → Helvetica Type1 de base, substitution automatique partout.
+    return null;
   }
-  return null;
-}
 
 /* ============================================================
    IMAGES — chaîne d'acquisition à 4 niveaux (CORS)
@@ -343,7 +334,15 @@ function _buildPDF(imgs, logoImg, fonts){
       _n(x) + " " + _n(y) + " " + _n(w) + " " + _n(h) + " re f\nQ\n";
   }
   function circle(cx, cy, r, color){
-    return "q " + _rg(color) + " " + _n(cx) + " " + _n(cy) + " " + _n(r) + " 0 360 arc f\nQ\n";
+    /* Cercle PDF valide : 4 courbes de Bézier (l'opérateur PostScript `arc` est
+       invalide en PDF et casse le rendu dans certains visionneurs stricts). */
+    const k = r * 0.5522847498;
+    return "q " + _rg(color) + " " +
+      _n(cx + r) + " " + _n(cy) + " m " +
+      _n(cx + r) + " " + _n(cy + k) + " " + _n(cx + k) + " " + _n(cy + r) + " " + _n(cx) + " " + _n(cy + r) + " c " +
+      _n(cx - k) + " " + _n(cy + r) + " " + _n(cx - r) + " " + _n(cy + k) + " " + _n(cx - r) + " " + _n(cy) + " c " +
+      _n(cx - r) + " " + _n(cy - k) + " " + _n(cx - k) + " " + _n(cy - r) + " " + _n(cx) + " " + _n(cy - r) + " c " +
+      _n(cx + k) + " " + _n(cy - r) + " " + _n(cx + r) + " " + _n(cy - k) + " " + _n(cx + r) + " " + _n(cy) + " c f\nQ\n";
   }
   function hline(x0, x1, y, color, w){
     return "q " + _rg(color) + " " + _n(w) + " w " + _n(x0) + " " + _n(y) + " m " + _n(x1) + " " + _n(y) + " l S\nQ\n";
@@ -576,8 +575,8 @@ function _buildPDF(imgs, logoImg, fonts){
     buildFont(30, fonts.reg, 80);
     buildFont(31, fonts.bold, 120);
   }else{
-    addObj(30, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-    addObj(31, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+    addObj(30, "<< /Type /Font /Subtype /Type1 /BaseFont /Arial /Encoding /WinAnsiEncoding >>");
+    addObj(31, "<< /Type /Font /Subtype /Type1 /BaseFont /Arial-Bold /Encoding /WinAnsiEncoding >>");
   }
 
   /* ================= PASSE 2 : pages réelles ================= */
@@ -634,7 +633,7 @@ async function exportAI(){
     const chunks = _buildPDF(imgs, logo, fonts);
     const blob = new Blob(chunks, { type: "application/postscript" });
     _download(blob, "calendrier-" + state.year + ".ai");
-    const fMsg = fonts ? "polices Roboto intégrées" : "⚠ polices non intégrées (CDN inaccessible)";
+    const fMsg = "polices Helvetica (compatibilité maximale — substitution automatique par les visionneurs)";
     if(nPhotos === 13){
       toast("✓ .ai exporté — 13/13 photos, " + fMsg);
     }else{

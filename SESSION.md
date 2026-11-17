@@ -77,19 +77,17 @@ Un `.ai` est un **PDF 1.4 avec extension .ai** : Illustrator l'ouvre nativement
   `5+2i` (contenu) ; objets dynamiques à partir du compteur `next`.
 - **Génération en deux passes** : passe 1 « sèche » (`DRY=true`) collecte les caractères
   utilisés (Set `USED`) sans écrire d'objets ; passe 2 génère le vrai contenu.
-- **Polices intégrées (depuis commit `5b98ac2`)** :
-  - Téléchargement au moment de l'export : Roboto Regular/Bold TTF depuis
-    `https://cdn.jsdelivr.net/gh/googlefonts/roboto-2@main/src/hinted/Roboto-{Regular,Bold}.ttf`
-    (CORS `*` vérifié) ; repli DejaVu
-    (`cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans{,-Bold}.ttf`).
-  - Parsing minimal `_parseTTF` : tables `head` (upem, bbox), `hhea` (asc, desc, nbHMetrics),
-    `cmap` (format 4 + 12), `hmtx` (largeurs).
-  - Objets écrits : `/Type0` + `/CIDFontType2` + `/FontDescriptor` + **`/FontFile2`**
-    (octets TTF bruts, non filtrés, `/Length1`) + **`/ToUnicode`** (100 entrées/bloc).
-    Tableau `/W` compacté en plages, `/DW 600`.
-  - Les textes sont écrits en **GIDs hexadécimaux** `<....> Tj` ; largeur exacte depuis hmtx.
-  - Repli : si CDN injoignable → Helvetica/Helvetica-Bold Type1 WinAnsi (comportement
-    historique) + avertissement dans le toast.
+- **Polices intégrées — ⚠ DÉSACTIVÉES depuis le 17 nov. 2026** (retour au repli
+  Helvetica Type1 WinAnsi, comportement d'origine) :
+  **Vector Craft** (visionneur vectoriel de l'utilisateur) rend le texte **illisible**
+  avec les polices Type0/Identity-H + FontFile2 intégrées, et installer Roboto sur la
+  machine a empiré le problème. `_getFont` dans `export-ai.js` retourne donc toujours
+  `null` (code TTF conservé mais désactivé, voir commentaire). Le texte du .ai est
+  écrit en **Helvetica/Helvetica-Bold Type1** — substitution automatique par tous les
+  visionneurs (Arial etc.), texte toujours lisible et éditable.
+  Le bouton 🔤 Polices .ai (modale `#fontModal` dans `index.html`) a été rewordé :
+  il explique qu'**aucune installation n'est nécessaire** et déconseille d'installer
+  des polices pour le .ai ; liens Roboto/DejaVu conservés au cas où.
 - **Photos intégrées** : chaîne d'acquisition CORS à 4 niveaux `_imgToJpeg` :
   1. `fetch` → `createImageBitmap` → canvas → JPEG baseline ≤1600 px (qualité 0.9),
   2. `Image` avec `crossOrigin="anonymous"` → canvas,
@@ -97,8 +95,21 @@ Un `.ai` est un **PDF 1.4 avec extension .ai** : Illustrator l'ouvre nativement
   4. `null` → dégradé seul.
   Image en `/XObject /Subtype /Image /Filter /DCTDecode /DeviceRGB`, recadrée
   « object-fit: cover » avec le zoom/décalage de l'utilisateur.
-- **Toast final** : « ✓ .ai exporté — 13/13 photos intégrées… polices Roboto intégrées »
-  ou « ⚠ N/13 photos… » → **ce nombre est l'outil de diagnostic principal**.
+- **Toast final** : « ✓ .ai exporté — 13/13 photos… polices Arial (compatibilité
+  maximale) » ou « ⚠ N/13 photos… » → **ce nombre est l'outil de diagnostic principal**.
+- **Corrections du 17 nov. 2026 (non encore validées par l'utilisateur)** :
+  1. `circle()` utilisait l'opérateur PostScript `arc` — **invalide en PDF** → remplacé
+     par 4 courbes de Bézier (kappa 0.5523). Les points des jours fériés n'étaient
+     donc **jamais dessinés** dans le .ai ; un visionneur strict (Vector Craft ?)
+     pouvait décrocher sur cette erreur. Validé : le rendu MuPDF ne signale plus rien
+     et les points apparaissent (test/harness-ai.mjs + test/check_ai.py).
+  2. BaseFont Helvetica → **Arial** : Windows ne fournit pas Helvetica → les
+     visionneurs affichaient un dialogue « polices manquantes » sans fin. Arial est
+     métriquement identique et présente sur Windows/macOS/iOS.
+  3. Harness Node + Python **récréés dans `test/`** (SESSION.md §4 décrivait le
+     principe) : `node test/harness-ai.mjs` génère `test/calendrier-test.ai`
+     (photo picsum réelle, polices Helvetica→null) ; `python test/check_ai.py`
+     (PyMuPDF, installé) liste les XObjects et rend les pages 1-2 en PNG.
 - Le logo du pied de page est aussi intégré (même chaîne).
 
 ### Harness de test Node (à recréer si besoin)
@@ -128,6 +139,14 @@ fonts Roboto réelles + JPEG réel 1920×1080 → PDF 1,58 Mo, 2 Type0 + 2 FontF
 
 L'utilisateur a signalé : « les images n'apparaissent pas dans le fichier ai » alors
 qu'elles sont visibles dans le PDF d'impression. **Pas encore confirmé corrigé.**
+Depuis, nouveau retour : dans **Vector Craft**, le texte du .ai devenait **illisible**
+(polices Type0 intégrées) et installer Roboto empirait les choses → **les polices
+intégrées ont été désactivées** (voir section 4). Avec le fichier en polices non
+intégrées, Vector Craft **demandait toujours des polices** (Helvetica absente de
+Windows) → correction Arial (section 4, correction 2). Les images invisibles ont
+deux suspects corrigés/à retester : l'opérateur `arc` invalide (correction 1) et
+éventuellement la transparence ExtGState. **En attente du retour utilisateur après
+Ctrl+F5 + nouvel export .ai.**
 
 Hypothèses par ordre de probabilité :
 1. **Cache navigateur** : l'utilisateur a peut-être testé une ancienne version → lui faire
