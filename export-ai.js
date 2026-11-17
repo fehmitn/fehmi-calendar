@@ -233,10 +233,16 @@ async function _bakePage(i, box, bmp, flate){
   const c = document.createElement("canvas");
   c.width = W; c.height = H;
   const x = c.getContext("2d");
+  /* ⚠ Le canvas a son origine en HAUT-gauche, le PDF en BAS-gauche :
+     toute coordonnée PDF doit être miroir-convertie (sinon la carte blanche
+     se retrouve en haut de page et la légende des fériés tombe sur la photo). */
+  const Y = v => H - v * s;
+  /* rect PDF (x,y,w,h) → rect canvas (left,top,w,h) */
+  const rPdf = (r) => [r.x * s, Y(r.y + r.h), r.w * s, r.h * s];
   x.fillStyle = "#ffffff"; x.fillRect(0, 0, W, H);
   /* dégradé + photo + voiles, confinés à la zone du fond (box) */
   x.save();
-  x.beginPath(); x.rect(box.x * s, box.y * s, box.w * s, box.h * s); x.clip();
+  x.beginPath(); x.rect(...rPdf(box)); x.clip();
   const g = x.createLinearGradient(0, 0, W, H);  // haut-gauche → bas-droite (comme le Shading PDF)
   const cols = GRADS[i];
   g.addColorStop(0, cols[0]); g.addColorStop(0.55, cols[1]); g.addColorStop(1, cols[2]);
@@ -245,17 +251,17 @@ async function _bakePage(i, box, bmp, flate){
     const s0 = Math.max(box.w / bmp.width, box.h / bmp.height) * (p.zoom / 100);
     const cx = box.x + box.w * (p.x / 100), cy = box.y + box.h * (1 - p.y / 100);
     x.globalAlpha = Math.max(0, Math.min(1, p.opacity / 100));
-    x.drawImage(bmp, (cx - bmp.width * s0 / 2) * s, (cy - bmp.height * s0 / 2) * s,
+    x.drawImage(bmp, (cx - bmp.width * s0 / 2) * s, Y(cy + bmp.height * s0 / 2),
       bmp.width * s0 * s, bmp.height * s0 * s);
     x.globalAlpha = 1;
   }
   if(p.dark > 0){
     x.globalAlpha = p.dark / 100; x.fillStyle = "#000000";
-    x.fillRect(box.x * s, box.y * s, box.w * s, box.h * s); x.globalAlpha = 1;
+    x.fillRect(...rPdf(box)); x.globalAlpha = 1;
   }
   if(i === 0){ // voile de couverture (rect 45 % de coverPage)
     x.globalAlpha = 0.45; x.fillStyle = "#000000";
-    x.fillRect(box.x * s, box.y * s, box.w * s, box.h * s); x.globalAlpha = 1;
+    x.fillRect(...rPdf(box)); x.globalAlpha = 1;
   }
   x.restore();
   /* carte du calendrier (mois uniquement) — aplatissée aussi */
@@ -265,7 +271,7 @@ async function _bakePage(i, box, bmp, flate){
       : { x: mm(7), y: mm(5), w: PW - mm(14), h: PH - mm(26) };
     if(p.layout !== "split") x.globalAlpha = 0.87;
     x.fillStyle = "#ffffff";
-    x.fillRect(card.x * s, card.y * s, card.w * s, card.h * s);
+    x.fillRect(...rPdf(card));
     x.globalAlpha = 1;
   }
   if(flate){

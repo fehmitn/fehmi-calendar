@@ -99,6 +99,11 @@ compatibilité visionneurs). Le fichier produit est un **PDF 1.4 portant l'exten
    derrière faisait croire à une photo.
 3. `arc` (PostScript) est invalide en PDF → utiliser des courbes `c`.
 4. Éviter ExtGState/Shading/clip autour des images : les visionneurs légers les gèrent mal.
+5. **Le canvas a son origine en haut-gauche, le PDF en bas-gauche** : toute géométrie
+   passée dans `_bakePage` doit être miroir-convertie (`Y = v => H - v*s`). Sans ça, la
+   carte blanche du mois se dessinait à 5 mm du **haut** (au lieu du bas) : la légende
+   des jours fériés tombait sur la photo, texte noir sur fond sombre = illisible.
+   Vérifié par `node test/bake_geometry.mjs` (canvas simulé, contrôle des positions).
 
 ### Validation (obligatoire après toute modification de `export-ai.js`)
 
