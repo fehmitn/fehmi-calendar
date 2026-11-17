@@ -167,7 +167,7 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
   inset:21mm 7mm 5mm 7mm; padding:3mm 4.5mm;
   background:rgba(255,255,255,.87); border-radius:2.5mm; box-shadow:0 1px 8px #0003;
 }
-.page.split .calcard{top:0; bottom:0; right:0; left:50%; padding:5mm 4.5mm 3mm 5mm; background:#fff;}
+.page.split .calcard{top:21mm; bottom:0; right:0; left:50%; padding:5mm 4.5mm 3mm 5mm; background:#fff;}
 
 /* En-tête du mois */
 .calhead{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:1.6mm;}
@@ -264,6 +264,7 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
   </div>
   <div class="grow"></div>
   <button class="btn" id="viewBtn">Voir les 13 pages</button>
+  <button class="btn" id="aiBtn">✒ Exporter .ai (Illustrator)</button>
   <button class="btn primary" id="exportBtn">⬇ Exporter en PDF (Prêt à imprimer)</button>
 </header>
 
@@ -1011,5 +1012,6 @@ function toast(msg, err){
 renderAll();
 loadIslamicHolidays(state.year, false);
 </script>
+<script src="export-ai.js"></script>
 </body>
 </html>
