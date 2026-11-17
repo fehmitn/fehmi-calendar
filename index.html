@@ -264,10 +264,7 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
   </div>
   <div class="grow"></div>
   <button class="btn" id="viewBtn">Voir les 13 pages</button>
-  <button class="btn" id="aiBtn">✒ Exporter .ai (Illustrator)</button>
-  <button class="btn" id="fontsBtn" title="Polices de l'export .ai — informations et téléchargements">🔤 Polices .ai</button>
-  <button class="btn primary" id="exportBtn">⬇ Exporter en PDF (Prêt à imprimer)</button>
-</header>
+  <button class="btn primary" id="exportBtn">⬇ Exporter en PDF (Prêt à imprimer)</button></header>
 
 <div class="shell">
   <aside class="sidebar">
@@ -348,25 +345,6 @@ body.view-all .slot.cur .page{box-shadow:0 0 0 2.5px var(--accent), 0 10px 34px 
     <div class="actions">
       <button class="btn" id="mCancel">Annuler</button>
       <button class="btn primary" id="mSave">Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal polices de l'export .ai -->
-<div class="modal" id="fontModal">
-  <div class="mbox" style="width:400px;">
-    <h4>🔤 Polices de l'export .ai</h4>
-    <div class="msub">Aucune installation nécessaire : le fichier .ai utilise les polices <b>Helvetica</b> de base (Type1), compatibles avec tous les logiciels.</div>
-    <div class="hint" style="border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:12px;">
-      Helvetica fait partie des polices de base du format PDF : Illustrator, Vector Craft et les autres visionneurs la substituent automatiquement (Arial, etc.) — le texte reste toujours lisible et éditable.
-      <br><br><b style="color:var(--muted)">⚠ N'installez pas de polices spécifiques pour le .ai</b> : les polices intégrées (Type0/FontFile2) sont mal gérées par certains visionneurs et peuvent rendre le texte illisible.
-    </div>
-    <div class="row2" style="margin-top:4px;"><span style="flex:1;"><span class="msub" style="display:block; margin:0;">Polices Roboto, au cas où vous les voudriez pour d'autres usages (hors .ai) :</span></span></div>
-    <div class="row2" style="margin-bottom:4px;"><span style="flex:1;">Roboto Regular</span><a class="btn small" style="flex:0;" href="https://cdn.jsdelivr.net/gh/googlefonts/roboto-2@main/src/hinted/Roboto-Regular.ttf" download="Roboto-Regular.ttf">⬇ Roboto-Regular.ttf</a></div>
-    <div class="row2" style="margin-bottom:4px;"><span style="flex:1;">Roboto Bold</span><a class="btn small" style="flex:0;" href="https://cdn.jsdelivr.net/gh/googlefonts/roboto-2@main/src/hinted/Roboto-Bold.ttf" download="Roboto-Bold.ttf">⬇ Roboto-Bold.ttf</a></div>
-    <div class="row2" style="margin-bottom:0;"><span style="flex:1;">DejaVu Sans</span><a class="btn small" style="flex:0;" href="https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf" download="DejaVuSans.ttf">⬇ DejaVuSans.ttf</a></div>
-    <div class="actions">
-      <button class="btn primary" id="fClose">Compris, fermer</button>
     </div>
   </div>
 </div>
@@ -999,7 +977,6 @@ function openDayEditor(key){
 $("mCancel").onclick = () => modal.classList.remove("open");
 modal.addEventListener("click", e => { if(e.target === modal) modal.classList.remove("open"); });
 document.addEventListener("keydown", e => { if(e.key === "Escape") modal.classList.remove("open"); });
-document.addEventListener("keydown", e => { if(e.key === "Escape") fontModal.classList.remove("open"); });
 $("mSave").onclick = () => {
   if(!editingKey) return;
   const [y, m, d] = editingKey.split("-").map(Number);
@@ -1019,14 +996,6 @@ $("mSave").onclick = () => {
 };
 
 /* ============================================================
-   MODALE POLICES .ai — téléchargement + consigne d'installation
-   ============================================================ */
-const fontModal = $("fontModal");
-$("fontsBtn").onclick = () => fontModal.classList.add("open");
-$("fClose").onclick = () => fontModal.classList.remove("open");
-fontModal.addEventListener("click", e => { if(e.target === fontModal) fontModal.classList.remove("open"); });
-
-/* ============================================================
    TOAST + DÉMARRAGE
    ============================================================ */
 let toastTimer;
@@ -1041,6 +1010,5 @@ function toast(msg, err){
 renderAll();
 loadIslamicHolidays(state.year, false);
 </script>
-<script src="export-ai.js"></script>
 </body>
 </html>
