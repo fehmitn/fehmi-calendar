@@ -2,19 +2,23 @@
    EXPORT ILLUSTRATOR (.ai) — Fehmi Calendar Studio
    Génère un fichier PDF 1.4 avec extension .ai (les fichiers .ai
    sont des PDF compatibles : Adobe Illustrator les ouvre avec les
-   textes et tracés 100 % éditables). Aucune dépendance externe.
+   textes et tracés 100 % éditables).
+   - Polices TTF intégrées (FontFile2 / Type0 / Identity-H) :
+     aucune police manquante à l'ouverture.
+   - Images JPEG intégrées (DCTDecode, baseline).
+   Aucune dépendance externe (les TTF sont téléchargés via CDN CORS).
    ============================================================ */
 "use strict";
 
 const MMPT = 72 / 25.4;               // mm -> points PDF
 const PW = 210 * MMPT, PH = 105 * MMPT; // page en pt (595.28 × 297.64)
 
-/* ---------- Métriques Helvetica / Helvetica-Bold (unités /1000) ---------- */
+/* ---------- Métriques Helvetica (repli si les TTF sont indisponibles) ---------- */
 const _WR = {" ":278,"!":278,'"':355,"#":556,"$":556,"%":889,"&":667,"'":191,"(":333,")":333,"*":389,"+":584,",":278,"-":333,".":278,"/":278,"0":556,"1":556,"2":556,"3":556,"4":556,"5":556,"6":556,"7":556,"8":556,"9":556,":":278,";":278,"<":584,"=":584,">":584,"?":556,"@":1015,"A":667,"B":667,"C":722,"D":722,"E":667,"F":611,"G":778,"H":722,"I":278,"J":500,"K":667,"L":556,"M":833,"N":722,"O":778,"P":667,"Q":778,"R":722,"S":667,"T":611,"U":722,"V":667,"W":944,"X":667,"Y":667,"Z":611,"[":278,"\\":278,"]":278,"^":469,"_":556,"`":333,"a":556,"b":556,"c":500,"d":556,"e":556,"f":278,"g":556,"h":556,"i":222,"j":222,"k":500,"l":222,"m":833,"n":556,"o":556,"p":556,"q":556,"r":333,"s":500,"t":278,"u":556,"v":500,"w":722,"x":500,"y":500,"z":500,"{":334,"|":260,"}":334,"~":584};
 const _WB = {" ":278,"!":333,'"':474,"#":556,"$":556,"%":889,"&":722,"'":238,"(":333,")":333,"*":389,"+":584,",":278,"-":333,".":278,"/":278,"0":556,"1":556,"2":556,"3":556,"4":556,"5":556,"6":556,"7":556,"8":556,"9":556,":":333,";":333,"<":584,"=":584,">":584,"?":611,"@":975,"A":722,"B":722,"C":722,"D":722,"E":667,"F":611,"G":778,"H":722,"I":278,"J":556,"K":722,"L":611,"M":833,"N":722,"O":778,"P":667,"Q":778,"R":722,"S":667,"T":611,"U":722,"V":667,"W":944,"X":667,"Y":667,"Z":611,"[":333,"\\":278,"]":333,"^":584,"_":556,"`":333,"a":556,"b":611,"c":556,"d":611,"e":556,"f":333,"g":611,"h":611,"i":278,"j":278,"k":556,"l":278,"m":889,"n":611,"o":611,"p":611,"q":611,"r":389,"s":556,"t":333,"u":611,"v":556,"w":778,"x":556,"y":556,"z":500,"{":389,"|":280,"}":389,"~":584};
 const _NORM = {"à":"a","á":"a","â":"a","ä":"a","ã":"a","å":"a","é":"e","è":"e","ê":"e","ë":"e","ì":"i","í":"i","î":"i","ï":"i","ò":"o","ó":"o","ô":"o","ö":"o","õ":"o","ù":"u","ú":"u","û":"u","ü":"u","ç":"c","ñ":"n","ý":"y","ÿ":"y","œ":"o","æ":"a","À":"A","Á":"A","Â":"A","Ä":"A","Ã":"A","Å":"A","É":"E","È":"E","Ê":"E","Ë":"E","Ì":"I","Í":"I","Î":"I","Ï":"I","Ò":"O","Ó":"O","Ô":"O","Ö":"O","Õ":"O","Ù":"U","Ú":"U","Û":"U","Ü":"U","Ç":"C","Ñ":"N","Ý":"Y","Œ":"O","Æ":"A"};
 
-/* ---------- Encodage WinAnsi (accents français) ---------- */
+/* ---------- Encodage WinAnsi (mode repli) ---------- */
 const _SPECIAL = {"\u2013":150,"\u2014":151,"\u2018":145,"\u2019":146,"\u201C":147,"\u201D":148,"\u2022":149,"\u2026":133,"\u0153":156,"\u0152":140,"\u20AC":128};
 function _wa(s){
   let out = "";
@@ -59,11 +63,113 @@ function _latin1(s){
   for(let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xFF;
   return b;
 }
+function _pad4(v){ return v.toString(16).toUpperCase().padStart(4, "0"); }
 
-/* ---------- Chargement / conversion des images en JPEG ---------- */
-/* Les photos distantes (Wikimedia/Picsum) sont lisibles par canvas UNIQUEMENT
-   si le serveur envoie CORS (Access-Control-Allow-Origin). Sinon le canvas est
-   "tainted" et toDataURL() échoue. Chaîne de secours à 4 niveaux ci-dessous. */
+/* ============================================================
+   POLICES TTF — téléchargement (CDN CORS) + parsing minimal
+   ============================================================ */
+const FONT_URLS = {
+  reg: [
+    ["https://cdn.jsdelivr.net/gh/googlefonts/roboto-2@main/src/hinted/Roboto-Regular.ttf", "Roboto-Regular"],
+    ["https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf", "DejaVuSans"]
+  ],
+  bold: [
+    ["https://cdn.jsdelivr.net/gh/googlefonts/roboto-2@main/src/hinted/Roboto-Bold.ttf", "Roboto-Bold"],
+    ["https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf", "DejaVuSans-Bold"]
+  ]
+};
+function _u16(b, o){ return (b[o] << 8) | b[o + 1]; }
+function _s16(b, o){ const v = (b[o] << 8) | b[o + 1]; return v >= 0x8000 ? v - 0x65536 : v; }
+function _u32(b, o){ return ((b[o] << 24) | (b[o + 1] << 16) | (b[o + 2] << 8) | b[o + 3]) >>> 0; }
+
+function _parseTTF(b){
+  if(!b || b.length < 64) return null;
+  const magic = _u32(b, 0);
+  if(magic !== 0x00010000 && magic !== 0x74727565) return null; // TrueType uniquement (glyf)
+  const num = _u16(b, 4);
+  const t = {};
+  for(let i = 0; i < num; i++){
+    const o = 12 + i * 16;
+    t[String.fromCharCode(b[o], b[o + 1], b[o + 2], b[o + 3])] = { o: _u32(b, o + 8), l: _u32(b, o + 12) };
+  }
+  if(!t.head || !t.hhea || !t.cmap || !t.hmtx) return null;
+  const upem = _u16(b, t.head.o + 18);
+  if(!upem) return null;
+  const bbox = [_s16(b, t.head.o + 36), _s16(b, t.head.o + 38), _s16(b, t.head.o + 40), _s16(b, t.head.o + 42)];
+  const asc = _s16(b, t.hhea.o + 4), desc = _s16(b, t.hhea.o + 6);
+  const nhm = _u16(b, t.hhea.o + 34);
+
+  /* sous-tables cmap : format 4 (BMP) et format 12 */
+  const co = t.cmap.o, ncmap = _u16(b, co + 2);
+  let f4 = null, f12 = null;
+  for(let i = 0; i < ncmap; i++){
+    const r = co + 4 + i * 8;
+    const pid = _u16(b, r), eid = _u16(b, r + 2), s = co + _u32(b, r + 4);
+    const fmt = _u16(b, s);
+    if(fmt === 4 && (f4 === null || (pid === 3 && eid === 1))) f4 = s;
+    if(fmt === 12 && (f12 === null || (pid === 3 && eid === 10))) f12 = s;
+  }
+  function gid4(cp){
+    if(!f4) return 0;
+    const seg = _u16(b, f4 + 6) / 2;
+    const endO = f4 + 14, startO = endO + seg * 2 + 2, deltaO = startO + seg * 2, rangeO = deltaO + seg * 2;
+    let lo = 0, hi = seg - 1, si = -1;
+    while(lo <= hi){
+      const mid = (lo + hi) >> 1;
+      if(_u16(b, endO + mid * 2) >= cp){ si = mid; hi = mid - 1; } else lo = mid + 1;
+    }
+    if(si < 0) return 0;
+    if(cp < _u16(b, startO + si * 2)) return 0;
+    const ro = _u16(b, rangeO + si * 2);
+    let g;
+    if(ro === 0) g = (cp + _s16(b, deltaO + si * 2)) & 0xFFFF;
+    else{
+      g = _u16(b, rangeO + si * 2 + ro + (cp - _u16(b, startO + si * 2)) * 2);
+      if(g) g = (g + _s16(b, deltaO + si * 2)) & 0xFFFF;
+    }
+    return g;
+  }
+  function gid12(cp){
+    if(!f12) return 0;
+    const ng = _u32(b, f12 + 12);
+    let lo = 0, hi = ng - 1;
+    while(lo <= hi){
+      const mid = (lo + hi) >> 1, g = f12 + 16 + mid * 12;
+      const s = _u32(b, g), e = _u32(b, g + 4);
+      if(cp < s) hi = mid - 1;
+      else if(cp > e) lo = mid + 1;
+      else return (_u32(b, g + 8) + cp - s) >>> 0;
+    }
+    return 0;
+  }
+  function gidFor(cp){
+    if(cp >= 0x10000 && f12) return gid12(cp);
+    if(f4) return gid4(cp);
+    if(f12) return gid12(cp);
+    return 0;
+  }
+  function aw(g){
+    const i = Math.min(Math.max(g, 0), nhm - 1);
+    return Math.round(_u16(b, t.hmtx.o + i * 4) / upem * 1000);
+  }
+  return { upem, bbox, asc, desc, gidFor, aw };
+}
+async function _getFont(kind){
+  for(const [url, name] of FONT_URLS[kind]){
+    try{
+      const r = await fetch(url);
+      if(!r.ok) continue;
+      const bytes = new Uint8Array(await r.arrayBuffer());
+      const f = _parseTTF(bytes);
+      if(f){ f.bytes = bytes; f.name = name; return f; }
+    }catch(e){ /* CDN suivant */ }
+  }
+  return null;
+}
+
+/* ============================================================
+   IMAGES — chaîne d'acquisition à 4 niveaux (CORS)
+   ============================================================ */
 function _loadImage(url, cors){
   return new Promise((res, rej) => {
     const im = new Image();
@@ -101,14 +207,13 @@ function _jpegDims(b){
   }
   return null;
 }
-/* Redessine une image (ImageBitmap/Image) en JPEG baseline propre pour le PDF */
 function _bitmapToJpeg(bmp, maxW){
   const r = Math.min(1, (maxW || 1600) / bmp.width);
   const c = document.createElement("canvas");
   c.width = Math.max(1, Math.round(bmp.width * r));
   c.height = Math.max(1, Math.round(bmp.height * r));
   const ctx = c.getContext("2d");
-  ctx.fillStyle = "#ffffff";                 // les PNG transparents ne doivent pas devenir noirs
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.drawImage(bmp, 0, 0, c.width, c.height);
   const durl = c.toDataURL("image/jpeg", 0.9);
@@ -120,22 +225,18 @@ async function _blobToJpeg(blob, maxW){
   if(bmp.close) bmp.close();
   return out;
 }
-/* Niveau 1 : fetch direct (CORS) → createImageBitmap → canvas (JPEG baseline)
-   Niveau 2 : Image crossOrigin → canvas
-   Niveau 3 : octets JPEG bruts passés tels quels (pas de canvas)
-   Niveau 4 : échec → null (dégradé dans le PDF) */
 async function _imgToJpeg(el){
   const src = el.getAttribute("src");
   if(!src) return null;
   try{
-    const blob = await (await fetch(src)).blob();          // marche aussi pour data:
+    const blob = await (await fetch(src)).blob();
     return await _blobToJpeg(blob);
   }catch(e1){}
-  try{                                                     // pas de CORS sur fetch mais image chargée avec CORS
+  try{
     const im = await _loadImage(src, true);
     return _bitmapToJpeg(im);
   }catch(e2){}
-  try{                                                     // derniers recours : octets directs si déjà JPEG
+  try{
     const b = src.startsWith("data:") ? _dataURLBytes(src) : new Uint8Array(await (await fetch(src, { mode: "cors" })).arrayBuffer());
     if(_imgType(b) === "jpeg"){ const d = _jpegDims(b); if(d) return { bytes: b, w: d.w, h: d.h }; }
   }catch(e3){}
@@ -153,10 +254,15 @@ function _download(blob, name){
 /* ============================================================
    CONSTRUCTION DU PDF
    ============================================================ */
-function _buildPDF(imgs, logoImg){
+function mm(v){ return v * MMPT; }
+
+function _buildPDF(imgs, logoImg, fonts){
   const chunks = [], offs = {};
   let off = 0, next = 32;
   let res = { gs:{}, sh:{}, im:{} };
+  const USED = new Set();   // caractères à intégrer (passe 1)
+  let DRY = false;
+  let EMB = null;           // polices intégrées après la passe 1
 
   function push(p){
     const b = typeof p === "string" ? _latin1(p) : p;
@@ -171,15 +277,17 @@ function _buildPDF(imgs, logoImg){
     push("\nendstream\nendobj\n");
   }
 
-  /* --- allocation d'objets ressources (registre la page courante) --- */
+  /* --- ressources par page (aucune écriture pendant la passe sèche) --- */
   function reggs(alpha){
     if(alpha === null || alpha === undefined || alpha >= 0.999) return null;
+    if(DRY) return "GSD";
     const n = next++;
     addObj(n, "<< /Type /ExtGState /ca " + _n(alpha) + " /CA " + _n(alpha) + " >>");
     res.gs["GS" + n] = n;
     return "GS" + n;
   }
   function regsh(cols){
+    if(DRY) return "ShD";
     const n = next++;
     const f1 = "<< /FunctionType 2 /Domain [0 1] /C0 [" + _colsRGB(cols[0]) + "] /C1 [" + _colsRGB(cols[1]) + "] /N 1 >>";
     const f2 = "<< /FunctionType 2 /Domain [0 1] /C0 [" + _colsRGB(cols[1]) + "] /C1 [" + _colsRGB(cols[2]) + "] /N 1 >>";
@@ -190,6 +298,7 @@ function _buildPDF(imgs, logoImg){
     return "Sh" + n;
   }
   function regim(im){
+    if(DRY) return "ImD";
     const n = next++;
     addStream(n, "<< /Type /XObject /Subtype /Image /Width " + im.w + " /Height " + im.h +
       " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " + im.bytes.length + " >>", im.bytes);
@@ -197,11 +306,20 @@ function _buildPDF(imgs, logoImg){
     return "Im" + n;
   }
 
-  /* --- primitives de dessin --- */
+  /* --- texte : WinAnsi (repli) ou GIDs hexadécimaux (polices intégrées) --- */
   function txt(s, x, baseline, sizeMm, bold, color, o){
     o = o || {};
     const size = sizeMm * MMPT;
-    const w = _tw(s, size, bold, o.tc || 0);
+    if(DRY){ for(const ch of s) USED.add(ch); }
+    let w;
+    if(EMB){
+      const m = bold ? EMB.bold : EMB.reg;
+      let sw = 0, n = 0;
+      for(const ch of s){ sw += (m.w[ch] !== undefined ? m.w[ch] : 600); n++; }
+      w = sw / 1000 * size + (o.tc ? o.tc * Math.max(0, n - 1) : 0);
+    }else{
+      w = _tw(s, size, bold, o.tc || 0);
+    }
     let tx = x;
     if(o.align === "center") tx -= w / 2;
     if(o.align === "right") tx -= w;
@@ -209,7 +327,15 @@ function _buildPDF(imgs, logoImg){
     if(o.tc) out += " " + _n(o.tc) + " Tc";
     if(o.g) out += " /" + o.g + " gs";
     out += " /" + (bold ? "F2" : "F1") + " " + _n(size) + " Tf " + _rg(color) +
-      " 1 0 0 1 " + _n(tx) + " " + _n(baseline) + " Tm " + _pdfStr(s) + " Tj ET\n";
+      " 1 0 0 1 " + _n(tx) + " " + _n(baseline) + " Tm ";
+    if(EMB){
+      const m = bold ? EMB.bold : EMB.reg;
+      let hex = "";
+      for(const ch of s) hex += _pad4(m.gid[ch] || 0);
+      out += "<" + hex + "> Tj ET\n";
+    }else{
+      out += _pdfStr(s) + " Tj ET\n";
+    }
     return out;
   }
   function rect(x, y, w, h, color, g){
@@ -388,18 +514,79 @@ function _buildPDF(imgs, logoImg){
       " >> /Contents " + cn + " 0 R >>";
   }
 
-  /* --- objets fixes --- */
-  push("%PDF-1.4\n%\u00E2\u00E3\u00CF\u00D3\n");
-  push("%%Creator: Fehmi Calendar Studio (PDF compatible Adobe Illustrator)\n");
+  /* ================= PASSE 1 : collecte des caractères ================= */
+  DRY = true;
+  for(let i = 0; i < 13; i++){
+    res = { gs:{}, sh:{}, im:{} };
+    if(i === 0) coverPage(i); else monthPage(i);
+  }
+  DRY = false;
+
+  /* ================= POLICES INTÉGRÉES ================= */
+  function buildFont(rootN, f, stemV){
+    const dN = next++, tuN = next++, fdN = next++, ffN = next++;
+    const k = 1000 / f.upem;
+    addObj(rootN, "<< /Type /Font /Subtype /Type0 /BaseFont /" + f.name +
+      " /Encoding /Identity-H /DescendantFonts [" + dN + " 0 R] /ToUnicode " + tuN + " 0 R >>");
+    /* /W : largeurs des glyphes utilisés (plages compactes) */
+    const gids = [...new Set(Object.values(f.gid))].filter(g => g > 0).sort((a, b) => a - b);
+    let wArr = "", i = 0;
+    while(i < gids.length){
+      let j = i;
+      while(j + 1 < gids.length && gids[j + 1] === gids[j] + 1 && f.aw(gids[j + 1]) === f.aw(gids[i])) j++;
+      const w = f.aw(gids[i]);
+      wArr += (j === i ? gids[i] + " [" + w + "] " : gids[i] + " " + gids[j] + " " + w + " ");
+      i = j + 1;
+    }
+    addObj(dN, "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /" + f.name +
+      " /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >>" +
+      " /FontDescriptor " + fdN + " 0 R /DW 600 /W [" + wArr.trim() + "] /CIDToGIDMap /Identity >>");
+    addObj(fdN, "<< /Type /FontDescriptor /FontName /" + f.name + " /Flags 4" +
+      " /FontBBox [" + f.bbox.map(v => Math.round(v * k)).join(" ") + "]" +
+      " /ItalicAngle 0 /Ascent " + Math.round(f.asc * k) + " /Descent " + Math.round(f.desc * k) +
+      " /CapHeight 700 /StemV " + stemV + " /FontFile2 " + ffN + " 0 R >>");
+    addStream(ffN, "<< /Length1 " + f.bytes.length + " >>", f.bytes);
+    /* ToUnicode : extraction de texte correcte dans Illustrator / Acrobat */
+    const chars = Object.keys(f.gid).filter(ch => f.gid[ch] > 0);
+    let tu = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n" +
+      "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n" +
+      "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n";
+    for(let c = 0; c < chars.length; c += 100){
+      const block = chars.slice(c, c + 100);
+      tu += block.length + " beginbfchar\n";
+      block.forEach(ch => {
+        tu += "<" + _pad4(f.gid[ch]) + "> <" + _pad4(ch.codePointAt(0)) + ">\n";
+      });
+      tu += "endbfchar\n";
+    }
+    tu += "endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n";
+    addStream(tuN, "<< /Length " + tu.length + " >>", tu);
+  }
+
+  if(fonts && fonts.reg && fonts.bold){
+    for(const f of [fonts.reg, fonts.bold]){
+      f.gid = {}; f.w = {};
+      for(const ch of USED){
+        const g = f.gidFor(ch.codePointAt(0));
+        f.gid[ch] = g;
+        f.w[ch] = f.aw(g);
+      }
+    }
+    EMB = fonts;
+    buildFont(30, fonts.reg, 80);
+    buildFont(31, fonts.bold, 120);
+  }else{
+    addObj(30, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
+    addObj(31, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
+  }
+
+  /* ================= PASSE 2 : pages réelles ================= */
   addObj(1, "<< /Type /Catalog /Pages 2 0 R >>");
   let kids = "";
   for(let i = 0; i < 13; i++) kids += (4 + 2 * i) + " 0 R ";
   addObj(2, "<< /Type /Pages /Count 13 /Kids [" + kids + "] >>");
   addObj(3, "<< /Title (Calendrier chevalet " + state.year + ") /Author (Fehmi Calendar Studio) /Creator (Fehmi Calendar Studio) >>");
-  addObj(30, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>");
-  addObj(31, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>");
 
-  /* --- les 13 pages --- */
   for(let i = 0; i < 13; i++){
     res = { gs:{}, sh:{}, im:{} };
     const c = i === 0 ? coverPage(i) : monthPage(i);
@@ -423,12 +610,10 @@ function _buildPDF(imgs, logoImg){
 /* ============================================================
    LANCEMENT DE L'EXPORT
    ============================================================ */
-function mm(v){ return v * MMPT; }
-
 async function exportAI(){
   if(exportAI.busy) return;
   exportAI.busy = true;
-  toast("Génération du fichier Illustrator (.ai)…");
+  toast("Génération du fichier .ai (polices + photos intégrées)…");
   try{
     const imgs = [];
     for(let i = 0; i < 13; i++){
@@ -441,13 +626,19 @@ async function exportAI(){
       if(le) logo = await _imgToJpeg(le);
     }
     const nPhotos = imgs.filter(Boolean).length;
-    const chunks = _buildPDF(imgs, logo);
+    let fonts = null;
+    try{
+      const [a, b] = await Promise.all([_getFont("reg"), _getFont("bold")]);
+      if(a && b) fonts = { reg: a, bold: b };
+    }catch(e){ /* repli Helvetica */ }
+    const chunks = _buildPDF(imgs, logo, fonts);
     const blob = new Blob(chunks, { type: "application/postscript" });
     _download(blob, "calendrier-" + state.year + ".ai");
+    const fMsg = fonts ? "polices Roboto intégrées" : "⚠ polices non intégrées (CDN inaccessible)";
     if(nPhotos === 13){
-      toast("✓ Fichier .ai exporté — 13/13 photos intégrées, textes éditables");
+      toast("✓ .ai exporté — 13/13 photos, " + fMsg);
     }else{
-      toast("⚠ .ai exporté — " + nPhotos + "/13 photos intégrées. Pour les manquantes : vérifiez la connexion ou choisissez le fournisseur Wikimedia (CORS autorisé), puis réexportez.", true);
+      toast("⚠ .ai exporté — " + nPhotos + "/13 photos intégrées. Fournisseur Wikimedia recommandé pour le CORS. " + fMsg, true);
     }
   }catch(e){
     console.error(e);
